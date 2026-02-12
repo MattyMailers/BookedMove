@@ -214,11 +214,8 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 w-full max-w-md">
           <div className="flex items-center gap-3 mb-8">
-            <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Truck className="h-6 w-6 text-white" />
-            </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">BookedMove</h1>
+              <img src="/images/2026-02-12-bookedmove-logo.png" alt="BookedMove" className="h-10 w-auto mb-2" />
               <p className="text-sm text-gray-500">Company Dashboard</p>
             </div>
           </div>
@@ -273,9 +270,7 @@ export default function Dashboard() {
             {company?.logo_url ? (
               <img src={company.logo_url} alt="" className="h-9 w-9 rounded-xl object-cover" />
             ) : (
-              <div className="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center">
-                <Truck className="h-5 w-5 text-white" />
-              </div>
+              <img src="/images/2026-02-12-bookedmove-icon.png" alt="BookedMove" className="h-9 w-9 rounded-xl object-contain" />
             )}
             <div className="min-w-0">
               <p className="font-bold text-gray-900 text-sm truncate">{company?.name || 'Dashboard'}</p>

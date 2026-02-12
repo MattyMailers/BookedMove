@@ -41,10 +41,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Truck className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">BookedMove</span>
+            <img src="/images/2026-02-12-bookedmove-logo.png" alt="BookedMove" className="h-10 w-auto" />
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Start your free trial</h1>
           <p className="text-gray-500">No credit card required. Set up in 5 minutes.</p>

@@ -70,10 +70,8 @@ export default function OnboardingPage() {
       <div className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Truck className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-gray-900">BookedMove Setup</span>
+            <img src="/images/2026-02-12-bookedmove-logo.png" alt="BookedMove" className="h-8 w-auto" />
+            <span className="font-bold text-gray-900">Setup</span>
           </div>
           <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-500 hover:text-gray-700">
             Skip for now

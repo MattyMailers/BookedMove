@@ -9,8 +9,7 @@ export default function LandingPage() {
       <nav className="border-b border-gray-100 bg-white/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-600/20">B</div>
-            <span className="text-xl font-extrabold text-gray-900 tracking-tight">BookedMove</span>
+            <Image src="/images/2026-02-12-bookedmove-logo.png" alt="BookedMove" width={180} height={40} className="h-9 w-auto" />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
             <a href="#how-it-works" className="hover:text-gray-900 transition-colors">How It Works</a>
@@ -385,8 +384,7 @@ export default function LandingPage() {
       <footer className="border-t border-gray-100 py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">B</div>
-            <span className="font-bold text-gray-900">BookedMove</span>
+            <Image src="/images/2026-02-12-bookedmove-logo.png" alt="BookedMove" width={140} height={32} className="h-7 w-auto" />
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-400">
             <Link href="/login" className="hover:text-gray-600 transition-colors">Log In</Link>
