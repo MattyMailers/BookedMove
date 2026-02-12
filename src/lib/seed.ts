@@ -1,5 +1,6 @@
 import { initDb, run, queryOne } from './db';
 import bcrypt from 'bcryptjs';
+export { initDb };
 export async function seedDb() {
   await initDb();
   const existing = await queryOne('SELECT COUNT(*) as count FROM companies');

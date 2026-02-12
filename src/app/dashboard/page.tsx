@@ -7,14 +7,15 @@ import {
   Truck, Home, Settings, DollarSign, BarChart3, Code2, LogOut, Calendar,
   Users, TrendingUp, ChevronRight, Copy, Check, ExternalLink, Search,
   Download, Eye, Edit3, Plus, X, ArrowUpDown, Loader2, Filter,
-  Sliders, UserPlus, Trash2, Mail, ChevronDown
+  Sliders, UserPlus, Trash2, Mail, ChevronDown, Menu, Tag, CalendarCheck,
+  ChevronLeft, Globe
 } from 'lucide-react';
 
 interface Booking {
   id: number; booking_ref: string; status: string; customer_name: string; customer_email: string;
   customer_phone: string; origin_address: string; destination_address: string; move_date: string;
   time_slot: string; home_size: string; estimated_price: number; deposit_amount: number;
-  deposit_paid: number; notes: string; created_at: string;
+  deposit_paid: number; notes: string; created_at: string; coupon_code?: string; discount_amount?: number; time_window?: string;
 }
 
 export default function Dashboard() {
@@ -40,6 +41,14 @@ export default function Dashboard() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
   const [uploading, setUploading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Coupons
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [showCouponForm, setShowCouponForm] = useState(false);
+  const [couponForm, setCouponForm] = useState({ code: '', discount_type: 'percent', discount_value: 10, min_bedrooms: '', expiration_date: '', max_uses: '' });
+  // Availability
+  const [availDays, setAvailDays] = useState<any[]>([]);
+  const [availMonth, setAvailMonth] = useState(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; });
 
   useEffect(() => {
     const t = localStorage.getItem('token');
@@ -57,6 +66,8 @@ export default function Dashboard() {
     fetch('/api/company/embed', { headers }).then(r => r.json()).then(d => setEmbedCode(d));
     fetch('/api/company/team', { headers }).then(r => r.json()).then(d => setTeam(d)).catch(() => {});
     fetch('/api/company/form-config', { headers }).then(r => r.json()).then(d => setFormConfig(d.formConfig || { steps: {}, customQuestions: [] })).catch(() => {});
+    fetch('/api/company/coupons', { headers }).then(r => r.json()).then(d => setCoupons(d.coupons || [])).catch(() => {});
+    fetch('/api/company/availability', { headers }).then(r => r.json()).then(d => setAvailDays(d.days || [])).catch(() => {});
   };
 
   useEffect(() => { loadData(); }, [token]);
@@ -154,6 +165,41 @@ export default function Dashboard() {
     setTimeout(() => setCopied(''), 2000);
   };
 
+  const createCoupon = async () => {
+    setSaving(true);
+    await fetch('/api/company/coupons', {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: couponForm.code,
+        discount_type: couponForm.discount_type,
+        discount_value: couponForm.discount_value,
+        min_bedrooms: couponForm.min_bedrooms ? parseInt(couponForm.min_bedrooms) : null,
+        expiration_date: couponForm.expiration_date || null,
+        max_uses: couponForm.max_uses ? parseInt(couponForm.max_uses) : null,
+      }),
+    });
+    setCouponForm({ code: '', discount_type: 'percent', discount_value: 10, min_bedrooms: '', expiration_date: '', max_uses: '' });
+    setShowCouponForm(false);
+    setSaving(false);
+    loadData();
+  };
+
+  const toggleCoupon = async (id: number, active: boolean) => {
+    await fetch(`/api/company/coupons/${id}`, {
+      method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    loadData();
+  };
+
+  const toggleAvailability = async (date: string, currentlyClosed: boolean) => {
+    await fetch('/api/company/availability', {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ overrides: [{ date, available: currentlyClosed, max_moves: null }] }),
+    });
+    loadData();
+  };
+
   const filteredBookings = bookings.filter(b => {
     if (statusFilter !== 'all' && b.status !== statusFilter) return false;
     if (searchQuery) {
@@ -195,11 +241,13 @@ export default function Dashboard() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'availability', label: 'Availability', icon: CalendarCheck },
+    { id: 'coupons', label: 'Coupons', icon: Tag },
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'customize', label: 'Widget', icon: Sliders },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'embed', label: 'Embed', icon: Code2 },
+    { id: 'embed', label: 'Embed Code', icon: Code2 },
   ];
 
   const statusColors: Record<string, string> = {
@@ -209,37 +257,67 @@ export default function Dashboard() {
     cancelled: 'bg-red-100 text-red-700',
   };
 
+  const standaloneUrl = company?.slug ? `${typeof window !== 'undefined' ? window.location.origin : ''}/book/${company.slug}` : '';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Truck className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <span className="font-bold text-gray-900">{company?.name || 'Dashboard'}</span>
-              <span className="text-xs text-gray-400 ml-2">BookedMove</span>
+            {company?.logo_url ? (
+              <img src={company.logo_url} alt="" className="h-9 w-9 rounded-xl object-cover" />
+            ) : (
+              <div className="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center">
+                <Truck className="h-5 w-5 text-white" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-bold text-gray-900 text-sm truncate">{company?.name || 'Dashboard'}</p>
+              <p className="text-xs text-gray-400">BookedMove</p>
             </div>
           </div>
-          <button onClick={() => { localStorage.removeItem('token'); setToken(''); }}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            <LogOut className="h-4 w-4" /> Logout
-          </button>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-1 mb-8 bg-white rounded-xl p-1 border border-gray-200 overflow-x-auto">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {tabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                tab === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+            <button key={t.id} onClick={() => { setTab(t.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                tab === t.id
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}>
-              <t.icon className="h-4 w-4" /> {t.label}
+              <t.icon className="h-4.5 w-4.5 flex-shrink-0" style={{ width: 18, height: 18 }} />
+              {t.label}
             </button>
           ))}
+        </nav>
+
+        <div className="p-3 border-t border-gray-100">
+          <button onClick={() => { localStorage.removeItem('token'); setToken(''); }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all">
+            <LogOut className="h-4.5 w-4.5 flex-shrink-0" style={{ width: 18, height: 18 }} />
+            Logout
+          </button>
         </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        {/* Mobile Header */}
+        <header className="lg:hidden bg-white border-b border-gray-200 px-4 h-14 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-gray-100">
+            <Menu className="h-5 w-5 text-gray-700" />
+          </button>
+          <span className="font-bold text-gray-900 text-sm">{company?.name || 'Dashboard'}</span>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* ===== OVERVIEW ===== */}
         {tab === 'overview' && analytics && (
@@ -251,20 +329,19 @@ export default function Dashboard() {
                 { label: 'Revenue', value: `$${analytics.revenue?.toLocaleString()}`, sub: 'confirmed bookings', icon: DollarSign, color: 'emerald' },
                 { label: 'Conversion', value: `${analytics.conversionRate}%`, sub: `${analytics.widgetLoads || 0} widget loads`, icon: BarChart3, color: 'purple' },
               ].map(stat => (
-                <div key={stat.label} className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                <div key={stat.label} className="bg-white rounded-2xl p-5 border border-gray-200 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                       <stat.icon className="h-5 w-5 text-blue-600" />
                     </div>
                     <span className="text-sm text-gray-500">{stat.label}</span>
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stat.value}</p>
                   <p className="text-xs text-gray-400 mt-1">{stat.sub}</p>
                 </div>
               ))}
             </div>
 
-            {/* Chart - Last 30 days */}
             {analytics.dailyBookings?.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-200 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Bookings — Last 30 Days</h3>
@@ -292,7 +369,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Widget Funnel */}
             {analytics.dropoffs?.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-200 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Widget Funnel</h3>
@@ -434,7 +510,7 @@ export default function Dashboard() {
                       ['Email', selectedBooking.customer_email],
                       ['Phone', selectedBooking.customer_phone || '-'],
                       ['Move Date', selectedBooking.move_date],
-                      ['Time', selectedBooking.time_slot || '-'],
+                      ['Time', selectedBooking.time_slot || selectedBooking.time_window || '-'],
                       ['Home Size', selectedBooking.home_size || '-'],
                       ['Estimate', `$${selectedBooking.estimated_price}`],
                       ['From', selectedBooking.origin_address],
@@ -445,6 +521,12 @@ export default function Dashboard() {
                         <p className="font-medium text-gray-900">{v}</p>
                       </div>
                     ))}
+                    {selectedBooking.coupon_code && (
+                      <div>
+                        <p className="text-gray-500 mb-1">Coupon</p>
+                        <p className="font-medium text-gray-900">{selectedBooking.coupon_code} (-${selectedBooking.discount_amount})</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -474,6 +556,215 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== AVAILABILITY ===== */}
+        {tab === 'availability' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Availability Calendar</h2>
+                  <p className="text-sm text-gray-500">Click a date to toggle it open/closed. Capacity: {settings?.max_moves_per_day || 3} moves/day</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => {
+                    const [y, m] = availMonth.split('-').map(Number);
+                    const d = new Date(y, m - 2, 1);
+                    setAvailMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                  }} className="p-2 rounded-lg hover:bg-gray-100"><ChevronLeft className="h-4 w-4" /></button>
+                  <span className="text-sm font-medium text-gray-700 w-28 text-center">
+                    {new Date(availMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button onClick={() => {
+                    const [y, m] = availMonth.split('-').map(Number);
+                    const d = new Date(y, m, 1);
+                    setAvailMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                  }} className="p-2 rounded-lg hover:bg-gray-100"><ChevronRight className="h-4 w-4" /></button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                  <div key={d} className="text-center text-xs font-semibold text-gray-400 py-2">{d}</div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {(() => {
+                  const [y, m] = availMonth.split('-').map(Number);
+                  const firstDay = new Date(y, m - 1, 1).getDay();
+                  const daysInMonth = new Date(y, m, 0).getDate();
+                  const cells = [];
+
+                  // Empty cells for days before month starts
+                  for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
+
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const ds = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const day = availDays.find((ad: any) => ad.date === ds);
+                    const booked = day?.booked || 0;
+                    const capacity = day?.capacity || (settings?.max_moves_per_day || 3);
+                    const closed = day?.closed;
+                    const isPast = new Date(ds) < new Date(new Date().toISOString().split('T')[0]);
+
+                    let bg = 'bg-green-50 hover:bg-green-100 border-green-200';
+                    let dot = '🟢';
+                    if (closed) { bg = 'bg-gray-100 border-gray-300'; dot = '⛔'; }
+                    else if (booked >= capacity) { bg = 'bg-red-50 border-red-200'; dot = '🔴'; }
+                    else if (booked >= capacity - 1) { bg = 'bg-yellow-50 border-yellow-200'; dot = '🟡'; }
+
+                    if (isPast) { bg = 'bg-gray-50 border-gray-100'; dot = ''; }
+
+                    cells.push(
+                      <button key={ds} disabled={isPast}
+                        onClick={() => !isPast && toggleAvailability(ds, !!closed)}
+                        className={`p-2 rounded-xl border text-center transition-all ${bg} ${isPast ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
+                        <div className="text-sm font-medium text-gray-700">{d}</div>
+                        <div className="text-xs text-gray-500">{booked}/{capacity}</div>
+                        {dot && <div className="text-[10px] leading-none">{dot}</div>}
+                      </button>
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+
+              <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
+                <span>🟢 Available</span>
+                <span>🟡 Limited</span>
+                <span>🔴 Full</span>
+                <span>⛔ Closed</span>
+              </div>
+            </div>
+
+            {/* Availability Settings */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Capacity Settings</h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Max Moves/Day</label>
+                  <input type="number" value={settings?.max_moves_per_day || 3}
+                    onChange={e => setSettings({ ...settings, max_moves_per_day: parseInt(e.target.value) })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">AM Window Capacity</label>
+                  <input type="number" value={settings?.max_moves_am || 3}
+                    onChange={e => setSettings({ ...settings, max_moves_am: parseInt(e.target.value) })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">PM Window Capacity</label>
+                  <input type="number" value={settings?.max_moves_pm || 2}
+                    onChange={e => setSettings({ ...settings, max_moves_pm: parseInt(e.target.value) })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+              </div>
+              <button onClick={saveSettings} disabled={saving}
+                className="mt-4 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== COUPONS ===== */}
+        {tab === 'coupons' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Promo Codes</h2>
+                  <p className="text-sm text-gray-500">Create discount codes for your customers</p>
+                </div>
+                <button onClick={() => setShowCouponForm(!showCouponForm)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+                  <Plus className="h-4 w-4" /> New Coupon
+                </button>
+              </div>
+
+              {showCouponForm && (
+                <div className="border-2 border-blue-100 bg-blue-50/30 rounded-xl p-5 mb-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">Code</label>
+                      <input type="text" value={couponForm.code} onChange={e => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                        placeholder="SUMMER10" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none uppercase" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">Type</label>
+                      <select value={couponForm.discount_type} onChange={e => setCouponForm({ ...couponForm, discount_type: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+                        <option value="percent">Percentage Off</option>
+                        <option value="flat">Flat $ Off/Hour</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">
+                        {couponForm.discount_type === 'percent' ? 'Discount %' : 'Discount $/hr'}
+                      </label>
+                      <input type="number" value={couponForm.discount_value} onChange={e => setCouponForm({ ...couponForm, discount_value: parseFloat(e.target.value) })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">Min Bedrooms (optional)</label>
+                      <input type="number" value={couponForm.min_bedrooms} onChange={e => setCouponForm({ ...couponForm, min_bedrooms: e.target.value })}
+                        placeholder="Any" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">Expiration (optional)</label>
+                      <input type="date" value={couponForm.expiration_date} onChange={e => setCouponForm({ ...couponForm, expiration_date: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">Max Uses (optional)</label>
+                      <input type="number" value={couponForm.max_uses} onChange={e => setCouponForm({ ...couponForm, max_uses: e.target.value })}
+                        placeholder="Unlimited" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={createCoupon} disabled={!couponForm.code || saving}
+                      className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                      {saving ? 'Creating...' : 'Create Coupon'}
+                    </button>
+                    <button onClick={() => setShowCouponForm(false)} className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {coupons.length === 0 ? (
+                <p className="text-gray-400 text-sm py-8 text-center">No coupons yet. Create one to get started!</p>
+              ) : (
+                <div className="space-y-3">
+                  {coupons.map((c: any) => (
+                    <div key={c.id} className={`flex items-center justify-between p-4 rounded-xl border ${c.active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                      <div className="flex items-center gap-4">
+                        <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-mono font-bold text-sm">{c.code}</div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {c.discount_type === 'percent' ? `${c.discount_value}% off` : `$${c.discount_value} off/hr`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Used {c.times_used}x
+                            {c.max_uses && ` / ${c.max_uses} max`}
+                            {c.expiration_date && ` • Expires ${c.expiration_date}`}
+                            {c.min_bedrooms && ` • Min ${c.min_bedrooms} bed`}
+                          </p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleCoupon(c.id, !c.active)}
+                        className={`text-xs px-3 py-1.5 rounded-lg font-medium ${c.active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                        {c.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -627,7 +918,7 @@ export default function Dashboard() {
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Invite Team Member</h2>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                   placeholder="team@company.com"
                   className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900" />
@@ -637,7 +928,7 @@ export default function Dashboard() {
                   <option value="admin">Admin</option>
                 </select>
                 <button onClick={inviteTeamMember}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
                   <UserPlus className="h-4 w-4" /> Invite
                 </button>
               </div>
@@ -739,8 +1030,9 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Pricing Settings</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Pricing & Deposit</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Base Rate ($/hr)</label>
@@ -756,29 +1048,72 @@ export default function Dashboard() {
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Deposit Type</label>
                   <select value={settings.deposit_type || 'flat'} onChange={e => setSettings({ ...settings, deposit_type: e.target.value })}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
-                    <option value="flat">Flat Amount</option>
-                    <option value="percent">Percentage</option>
+                    <option value="flat">Flat Amount ($)</option>
+                    <option value="percent">Percentage (%)</option>
+                    <option value="hourly">Hours-Based</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Deposit Amount</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    {settings.deposit_type === 'percent' ? 'Deposit %' : settings.deposit_type === 'hourly' ? 'Number of Hours' : 'Deposit Amount ($)'}
+                  </label>
                   <input type="number" value={settings.deposit_amount || ''} onChange={e => setSettings({ ...settings, deposit_amount: parseFloat(e.target.value) })}
+                    placeholder={settings.deposit_type === 'percent' ? '25' : settings.deposit_type === 'hourly' ? '1' : '100'}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {settings.deposit_type === 'percent' ? 'Percentage of estimated total' : settings.deposit_type === 'hourly' ? 'Deposit = hours × hourly rate' : 'Fixed dollar amount'}
+                  </p>
                 </div>
               </div>
             </div>
+
+            {/* Time Windows */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Time Windows</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Primary Window (AM)</label>
+                  <input type="text" value={settings.default_time_window || '8:30 AM - 12:00 PM'}
+                    onChange={e => setSettings({ ...settings, default_time_window: e.target.value })}
+                    placeholder="8:30 AM - 12:00 PM"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="font-medium text-gray-900">Enable Secondary Window (PM)</p>
+                    <p className="text-sm text-gray-500">Offer an afternoon time window</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={!!settings.secondary_window_enabled}
+                      onChange={e => setSettings({ ...settings, secondary_window_enabled: e.target.checked })}
+                      className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
+                  </label>
+                </div>
+                {settings.secondary_window_enabled && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Secondary Window (PM)</label>
+                    <input type="text" value={settings.secondary_time_window || '1:00 PM - 5:00 PM'}
+                      onChange={e => setSettings({ ...settings, secondary_time_window: e.target.value })}
+                      placeholder="1:00 PM - 5:00 PM"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Integrations</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Google Maps API Key</label>
                   <input type="password" value={settings.google_maps_key || ''} onChange={e => setSettings({ ...settings, google_maps_key: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" placeholder={settings.google_maps_key_set ? '****' + (settings.google_maps_key_masked?.slice(4) || '') : 'Enter API key'} />
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" placeholder={settings.google_maps_key_set ? '****' : 'Enter API key'} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">SmartMoving API Key</label>
                   <input type="password" value={settings.smartmoving_api_key || ''} onChange={e => setSettings({ ...settings, smartmoving_api_key: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" placeholder={settings.smartmoving_api_key_set ? '****' + (settings.smartmoving_api_key_masked?.slice(4) || '') : 'Enter API key'} />
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" placeholder={settings.smartmoving_api_key_set ? '****' : 'Enter API key'} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">SmartMoving Client ID</label>
@@ -792,6 +1127,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
             {/* Payment Gateway */}
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Payment Gateway (Authorize.net)</h2>
@@ -815,13 +1151,13 @@ export default function Dashboard() {
                         <label className="text-sm font-medium text-gray-700 mb-1 block">API Login ID</label>
                         <input type="password" value={settings.authorize_net_login_id || ''} onChange={e => setSettings({ ...settings, authorize_net_login_id: e.target.value })}
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none"
-                          placeholder={settings.authorize_net_login_id_set ? '****' + (settings.authorize_net_login_id_masked?.slice(4) || '') : 'Enter Login ID'} />
+                          placeholder={settings.authorize_net_login_id_set ? '****' : 'Enter Login ID'} />
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700 mb-1 block">Transaction Key</label>
                         <input type="password" value={settings.authorize_net_transaction_key || ''} onChange={e => setSettings({ ...settings, authorize_net_transaction_key: e.target.value })}
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none"
-                          placeholder={settings.authorize_net_transaction_key_set ? '****' + (settings.authorize_net_transaction_key_masked?.slice(4) || '') : 'Enter Transaction Key'} />
+                          placeholder={settings.authorize_net_transaction_key_set ? '****' : 'Enter Transaction Key'} />
                       </div>
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
@@ -847,6 +1183,24 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Custom Domain */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Custom Booking Domain</h2>
+              <p className="text-sm text-gray-500 mb-4">Use your own domain for the standalone booking page</p>
+              <div className="space-y-3">
+                <input type="text" value={settings.custom_domain || ''} onChange={e => setSettings({ ...settings, custom_domain: e.target.value })}
+                  placeholder="book.yourcompany.com"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
+                {settings.custom_domain && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                    <p className="text-sm font-medium text-blue-800 mb-2">DNS Setup Instructions:</p>
+                    <p className="text-sm text-blue-700">Add a <strong>CNAME</strong> record for <code className="bg-blue-100 px-1.5 py-0.5 rounded">{settings.custom_domain}</code> pointing to:</p>
+                    <code className="block mt-2 bg-blue-100 px-3 py-2 rounded-lg text-sm text-blue-900 font-mono">cname.vercel-dns.com</code>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Custom CSS */}
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-2">Custom Widget CSS</h2>
@@ -866,6 +1220,27 @@ export default function Dashboard() {
         {/* ===== EMBED ===== */}
         {tab === 'embed' && embedCode && (
           <div className="space-y-6">
+            {/* Standalone URL */}
+            {standaloneUrl && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Standalone Booking Page</h2>
+                <p className="text-sm text-gray-500 mb-4">Share this link in texts, ads, and social media — no website needed.</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-gray-50 px-4 py-3 rounded-xl text-sm font-mono text-gray-700 truncate border border-gray-200">
+                    {standaloneUrl}
+                  </div>
+                  <button onClick={() => copyToClipboard(standaloneUrl, 'standalone')}
+                    className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+                    {copied === 'standalone' ? <><Check className="h-4 w-4" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy Link</>}
+                  </button>
+                  <a href={standaloneUrl} target="_blank"
+                    className="flex items-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <ExternalLink className="h-4 w-4" /> Preview
+                  </a>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-2">Embed Your Booking Widget</h2>
               <p className="text-gray-500 text-sm mb-6">Copy one of these code snippets and paste it into your website.</p>
@@ -894,6 +1269,8 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        </div>
       </div>
     </div>
   );

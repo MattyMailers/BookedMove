@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
   try {
     await seedDb();
     const co = await queryOne(
-      'SELECT c.*, cs.base_rate_per_hour, cs.min_hours, cs.deposit_type, cs.deposit_amount, cs.mileage_rate, cs.form_config, cs.payment_enabled, cs.payment_mode, cs.payment_timing, cs.custom_css, cs.authorize_net_login_id FROM companies c LEFT JOIN company_settings cs ON cs.company_id = c.id WHERE c.slug = ?',
+      'SELECT c.*, cs.base_rate_per_hour, cs.min_hours, cs.deposit_type, cs.deposit_amount, cs.mileage_rate, cs.form_config, cs.payment_enabled, cs.payment_mode, cs.payment_timing, cs.custom_css, cs.authorize_net_login_id, cs.default_time_window, cs.secondary_time_window, cs.secondary_window_enabled FROM companies c LEFT JOIN company_settings cs ON cs.company_id = c.id WHERE c.slug = ?',
       [params.slug]
     );
     if (!co) return corsResponse({ error: 'Not found' }, 404);
@@ -36,6 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
         clientKey: co.authorize_net_login_id ? (() => { try { const { decrypt } = require('@/lib/encryption'); return decrypt(String(co.authorize_net_login_id)); } catch { return null; } })() : null,
       } : { enabled: false },
       customCss: co.custom_css || null,
+      timeWindows: {
+        primary: co.default_time_window || '8:30 AM - 12:00 PM',
+        secondary: co.secondary_window_enabled ? (co.secondary_time_window || null) : null,
+      },
     });
   } catch (e: any) {
     return corsResponse({ error: e.message }, 500);

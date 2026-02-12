@@ -13,7 +13,14 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     if (!co) return corsResponse({ error: 'Not found' }, 404);
     const b = await req.json();
     const ref = 'BM-' + nanoid(8).toUpperCase();
-    const result = await run('INSERT INTO bookings (company_id, booking_ref, status, customer_name, customer_email, customer_phone, origin_address, destination_address, move_date, time_slot, home_size, bedrooms, estimated_hours, estimated_price, deposit_amount, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [co.id, ref, 'pending', b.customerName, b.customerEmail, b.customerPhone||'', b.originAddress, b.destinationAddress, b.moveDate, b.timeSlot||'', b.homeSize||'', b.bedrooms||0, b.estimatedHours||0, b.estimatedPrice||0, b.depositAmount||0, b.notes||'']);
+    const result = await run('INSERT INTO bookings (company_id, booking_ref, status, customer_name, customer_email, customer_phone, origin_address, destination_address, move_date, time_slot, home_size, bedrooms, estimated_hours, estimated_price, deposit_amount, notes, coupon_code, discount_amount, time_window) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [co.id, ref, 'pending', b.customerName, b.customerEmail, b.customerPhone||'', b.originAddress, b.destinationAddress, b.moveDate, b.timeSlot||'', b.homeSize||'', b.bedrooms||0, b.estimatedHours||0, b.estimatedPrice||0, b.depositAmount||0, b.notes||'', b.couponCode||null, b.discountAmount||null, b.timeWindow||null]);
+
+    // Increment coupon usage if used
+    if (b.couponCode) {
+      try {
+        await run('UPDATE coupons SET times_used = times_used + 1 WHERE company_id = ? AND code = ? COLLATE NOCASE', [co.id, b.couponCode.trim().toUpperCase()]);
+      } catch {}
+    }
 
     // Send notification emails (non-blocking)
     const brand = { name: String(co.name), logoUrl: co.logo_url as string | undefined, primaryColor: co.primary_color as string | undefined, accentColor: co.accent_color as string | undefined };

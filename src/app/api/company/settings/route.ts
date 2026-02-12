@@ -75,6 +75,15 @@ export async function PUT(req: NextRequest) {
       add('payment_timing', s.payment_timing);
       add('email_notifications', s.email_notifications ? JSON.stringify(s.email_notifications) : undefined);
       add('custom_css', s.custom_css);
+      // Phase 3: availability & time windows
+      add('max_moves_per_day', s.max_moves_per_day);
+      add('availability_mode', s.availability_mode);
+      add('default_time_window', s.default_time_window);
+      add('secondary_time_window', s.secondary_time_window);
+      if (s.secondary_window_enabled !== undefined) add('secondary_window_enabled', s.secondary_window_enabled ? 1 : 0);
+      add('max_moves_am', s.max_moves_am);
+      add('max_moves_pm', s.max_moves_pm);
+      add('custom_domain', s.custom_domain);
 
       if (sets.length > 0) {
         args.push(p.companyId);

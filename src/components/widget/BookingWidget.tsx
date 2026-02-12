@@ -1,13 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, ArrowLeft, ArrowRight, MapPin, Calendar, Home, DollarSign, User, CheckCircle2, Loader2, Ruler, Package } from 'lucide-react';
+import { Truck, ArrowLeft, ArrowRight, MapPin, Calendar, Home, DollarSign, User, CheckCircle2, Loader2, Ruler, Package, Tag } from 'lucide-react';
 
-const TIME_SLOTS = [
-  { id: 'morning', label: '8-10 AM', icon: '🌅' },
-  { id: 'late-morning', label: '10-12 PM', icon: '☀️' },
-  { id: 'afternoon', label: '1-3 PM', icon: '🌤️' },
-  { id: 'late-afternoon', label: '3-5 PM', icon: '🌇' },
-];
 const SIZES = [
   { id: 'studio', label: 'Studio', br: 0, icon: '🏠' },
   { id: '1-bedroom', label: '1 Bed', br: 1, icon: '🏡' },
@@ -34,6 +28,7 @@ export default function BookingWidget({ slug }: { slug: string }) {
   const [destination, setDestination] = useState('');
   const [moveDate, setMoveDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
+  const [timeWindow, setTimeWindow] = useState('');
   const [homeSize, setHomeSize] = useState('');
   const [bedrooms, setBedrooms] = useState(2);
   const [sqft, setSqft] = useState(1500);
@@ -52,6 +47,15 @@ export default function BookingWidget({ slug }: { slug: string }) {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [paymentComplete, setPaymentComplete] = useState(false);
+  // Availability
+  const [availDays, setAvailDays] = useState<any[]>([]);
+  const [availSlots, setAvailSlots] = useState<any[]>([]);
+  // Coupon
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValid, setCouponValid] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const base = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -64,7 +68,6 @@ export default function BookingWidget({ slug }: { slug: string }) {
       setConfig(d);
       setLoading(false);
       trackEvent('widget_loaded');
-      // Load Accept.js if payments enabled
       if (d?.payment?.enabled && !(window as any).Accept) {
         const isSandbox = typeof window !== 'undefined' && window.location.hostname !== 'bookedmove.com';
         const script = document.createElement('script');
@@ -72,7 +75,6 @@ export default function BookingWidget({ slug }: { slug: string }) {
         script.charset = 'utf-8';
         document.head.appendChild(script);
       }
-      // Inject custom CSS if present
       if (d?.customCss) {
         const style = document.createElement('style');
         style.textContent = d.customCss;
@@ -81,10 +83,37 @@ export default function BookingWidget({ slug }: { slug: string }) {
     }).catch(() => { setError('Failed to load'); setLoading(false); });
   }, [slug, base, trackEvent]);
 
+  // Fetch availability when date step is active
+  useEffect(() => {
+    if (!config || !moveDate) return;
+    // Fetch month availability
+    const month = moveDate.substring(0, 7);
+    fetch(`${base}/api/widget/${slug}/availability?month=${month}`).then(r => r.json()).then(d => {
+      setAvailDays(d.days || []);
+    }).catch(() => {});
+  }, [config, moveDate, base, slug]);
+
+  // Fetch availability on initial load for current month
+  useEffect(() => {
+    if (!config) return;
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    fetch(`${base}/api/widget/${slug}/availability?month=${month}`).then(r => r.json()).then(d => {
+      setAvailDays(d.days || []);
+    }).catch(() => {});
+  }, [config, base, slug]);
+
+  // Fetch time slots when date changes
+  useEffect(() => {
+    if (!moveDate || !config) return;
+    fetch(`${base}/api/widget/${slug}/availability?date=${moveDate}`).then(r => r.json()).then(d => {
+      setAvailSlots(d.slots || []);
+    }).catch(() => {});
+  }, [moveDate, config, base, slug]);
+
   const pc = config?.company?.primaryColor || '#2563eb';
   const ac = config?.company?.accentColor || '#1e40af';
 
-  // Build steps based on form config
   const formSteps = config?.formConfig?.steps || {};
   const activeSteps: string[] = ['addresses'];
   if (formSteps.dateTime !== false) activeSteps.push('dateTime');
@@ -92,7 +121,6 @@ export default function BookingWidget({ slug }: { slug: string }) {
   if (formSteps.squareFootage === true) activeSteps.push('squareFootage');
   if (formSteps.fullness === true) activeSteps.push('fullness');
   activeSteps.push('estimate', 'contactInfo');
-  // Add payment step if enabled and timing is at_booking
   const paymentConfig = config?.payment;
   if (paymentConfig?.enabled && paymentConfig?.timing === 'at_booking') {
     activeSteps.push('payment');
@@ -112,6 +140,49 @@ export default function BookingWidget({ slug }: { slug: string }) {
     const fullnessMult = fullness / 100;
     const r = await fetch(`${base}/api/widget/${slug}/estimate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bedrooms, moveSize: homeSize, distanceMiles: 15, sqft, fullness: fullnessMult, couponCode: couponValid?.code || null }),
+    });
+    setEstimate(await r.json());
+  };
+
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const r = await fetch(`${base}/api/widget/${slug}/coupon`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode, bedrooms }),
+      });
+      const d = await r.json();
+      if (d.valid) {
+        setCouponValid(d);
+        setCouponError('');
+        // Re-fetch estimate with coupon
+        const fullnessMult = fullness / 100;
+        const r2 = await fetch(`${base}/api/widget/${slug}/estimate`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bedrooms, moveSize: homeSize, distanceMiles: 15, sqft, fullness: fullnessMult, couponCode: d.code }),
+        });
+        setEstimate(await r2.json());
+      } else {
+        setCouponValid(null);
+        setCouponError(d.error || 'Invalid code');
+      }
+    } catch {
+      setCouponError('Failed to validate');
+    }
+    setCouponLoading(false);
+  };
+
+  const removeCoupon = async () => {
+    setCouponValid(null);
+    setCouponCode('');
+    setCouponError('');
+    // Re-fetch estimate without coupon
+    const fullnessMult = fullness / 100;
+    const r = await fetch(`${base}/api/widget/${slug}/estimate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bedrooms, moveSize: homeSize, distanceMiles: 15, sqft, fullness: fullnessMult }),
     });
     setEstimate(await r.json());
@@ -123,12 +194,11 @@ export default function BookingWidget({ slug }: { slug: string }) {
       trackEvent('booking_submitted');
       const r = await fetch(`${base}/api/widget/${slug}/book`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName: name, customerEmail: email, customerPhone: phone, originAddress: origin, destinationAddress: destination, moveDate, timeSlot, homeSize, bedrooms, estimatedHours: estimate?.estimatedHours, estimatedPrice: estimate?.estimatedPrice, depositAmount: estimate?.depositAmount || 0, notes, squareFootage: sqft, fullness }),
+        body: JSON.stringify({ customerName: name, customerEmail: email, customerPhone: phone, originAddress: origin, destinationAddress: destination, moveDate, timeSlot, homeSize, bedrooms, estimatedHours: estimate?.estimatedHours, estimatedPrice: estimate?.estimatedPrice, depositAmount: estimate?.depositAmount || 0, notes, squareFootage: sqft, fullness, couponCode: couponValid?.code || null, discountAmount: estimate?.discountAmount || null, timeWindow }),
       });
       const d = await r.json();
       if (d.bookingRef) {
         setBookingRef(d.bookingRef);
-        // If payment step follows, just advance; otherwise confirm and go to done
         if (paymentConfig?.enabled && paymentConfig?.timing === 'at_booking') {
           setStep(s => s + 1);
         } else {
@@ -143,53 +213,32 @@ export default function BookingWidget({ slug }: { slug: string }) {
   const handlePayment = async () => {
     setPaymentProcessing(true); setPaymentError('');
     try {
-      // Accept.js dispatches response to window handler
       const acceptResponse: any = await new Promise((resolve, reject) => {
         (window as any).acceptResponseHandler = (response: any) => {
-          if (response.messages.resultCode === 'Error') {
-            reject(new Error(response.messages.message[0].text));
-          } else {
-            resolve(response);
-          }
+          if (response.messages.resultCode === 'Error') reject(new Error(response.messages.message[0].text));
+          else resolve(response);
         };
-        // Dispatch Accept.js
         const secureData: any = {};
         const cardNumber = (document.getElementById('bm-card-number') as HTMLInputElement)?.value?.replace(/\s/g, '');
         const expMonth = (document.getElementById('bm-exp-month') as HTMLInputElement)?.value;
         const expYear = (document.getElementById('bm-exp-year') as HTMLInputElement)?.value;
         const cvv = (document.getElementById('bm-cvv') as HTMLInputElement)?.value;
-        if (!cardNumber || !expMonth || !expYear || !cvv) {
-          reject(new Error('Please fill in all card fields')); return;
-        }
+        if (!cardNumber || !expMonth || !expYear || !cvv) { reject(new Error('Please fill in all card fields')); return; }
         secureData.cardData = { cardNumber, month: expMonth, year: expYear, cardCode: cvv };
         secureData.authData = { clientKey: paymentConfig.clientKey, apiLoginID: paymentConfig.clientKey };
         (window as any).Accept.dispatchData(secureData, (window as any).acceptResponseHandler);
       });
-
-      // Send nonce to our API
       const r = await fetch(`${base}/api/widget/${slug}/payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingRef,
-          opaqueDataDescriptor: acceptResponse.opaqueData.dataDescriptor,
-          opaqueDataValue: acceptResponse.opaqueData.dataValue,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingRef, opaqueDataDescriptor: acceptResponse.opaqueData.dataDescriptor, opaqueDataValue: acceptResponse.opaqueData.dataValue }),
       });
       const d = await r.json();
       if (d.success) {
-        setPaymentComplete(true);
-        trackEvent('payment_completed');
+        setPaymentComplete(true); trackEvent('payment_completed');
         await fetch(`${base}/api/widget/${slug}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingRef }) });
         setStep(CONFIRMED_STEP);
-      } else {
-        setPaymentError(d.error || 'Payment failed');
-        trackEvent('payment_failed');
-      }
-    } catch (e: any) {
-      setPaymentError(e.message || 'Payment failed');
-      trackEvent('payment_failed');
-    }
+      } else { setPaymentError(d.error || 'Payment failed'); trackEvent('payment_failed'); }
+    } catch (e: any) { setPaymentError(e.message || 'Payment failed'); trackEvent('payment_failed'); }
     setPaymentProcessing(false);
   };
 
@@ -198,7 +247,15 @@ export default function BookingWidget({ slug }: { slug: string }) {
   const canProceed = () => {
     switch (currentStepId) {
       case 'addresses': return origin.length > 3 && destination.length > 3;
-      case 'dateTime': return moveDate && timeSlot;
+      case 'dateTime': {
+        if (!moveDate) return false;
+        // Check if date is available
+        const day = availDays.find((d: any) => d.date === moveDate);
+        if (day && (day.status === 'full' || day.status === 'closed')) return false;
+        // Need a time window or time slot
+        if (availSlots.length > 0) return !!timeWindow;
+        return !!timeSlot;
+      }
       case 'homeSize': return homeSize;
       case 'squareFootage': return true;
       case 'fullness': return true;
@@ -220,6 +277,13 @@ export default function BookingWidget({ slug }: { slug: string }) {
   if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
   if (error && !config) return <div className="p-8 text-center text-red-600">{error}</div>;
   const minD = new Date(); minD.setDate(minD.getDate() + 2);
+
+  // Get availability status for a date
+  const getDateStatus = (dateStr: string) => {
+    const day = availDays.find((d: any) => d.date === dateStr);
+    if (!day) return null;
+    return day.status; // 'available', 'limited', 'full', 'closed'
+  };
 
   return (
     <div className="max-w-2xl mx-auto font-sans">
@@ -272,7 +336,6 @@ export default function BookingWidget({ slug }: { slug: string }) {
                     onBlur={() => setTimeout(() => f.setShow(false), 200)}
                     placeholder={f.p}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-900 transition-colors"
-                    style={{ borderColor: undefined }}
                   />
                   {f.show && f.sugg.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
@@ -296,23 +359,66 @@ export default function BookingWidget({ slug }: { slug: string }) {
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <Calendar className="h-4 w-4" style={{ color: pc }} />Move Date
                 </label>
-                <input type="date" value={moveDate} onChange={e => setMoveDate(e.target.value)}
+                <input type="date" value={moveDate} onChange={e => { setMoveDate(e.target.value); setTimeWindow(''); setTimeSlot(''); }}
                   min={minD.toISOString().split('T')[0]}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-900" />
+                {/* Date availability indicator */}
+                {moveDate && (() => {
+                  const status = getDateStatus(moveDate);
+                  if (status === 'full' || status === 'closed') return (
+                    <p className="text-sm text-red-600 mt-2">⛔ This date is {status === 'closed' ? 'closed' : 'fully booked'}. Please choose another date.</p>
+                  );
+                  if (status === 'limited') return (
+                    <p className="text-sm text-yellow-600 mt-2">⚠️ Limited availability on this date. Book soon!</p>
+                  );
+                  if (status === 'available') return (
+                    <p className="text-sm text-green-600 mt-2">✅ Available</p>
+                  );
+                  return null;
+                })()}
               </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700 mb-3 block">Time</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {TIME_SLOTS.map(s => (
-                    <button key={s.id} onClick={() => setTimeSlot(s.id)}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${timeSlot === s.id ? 'shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
-                      style={timeSlot === s.id ? { borderColor: pc, backgroundColor: pc + '10' } : {}}>
-                      <span className="text-lg">{s.icon}</span>
-                      <p className="text-sm font-medium mt-1" style={timeSlot === s.id ? { color: pc } : { color: '#374151' }}>{s.label}</p>
-                    </button>
-                  ))}
+
+              {/* Time Windows - use config time windows if available, fallback to old grid */}
+              {moveDate && (availSlots.length > 0 ? (
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-3 block">Arrival Window</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {availSlots.map((slot: any) => (
+                      <button key={slot.id} onClick={() => { setTimeWindow(slot.id); setTimeSlot(slot.label); }}
+                        disabled={!slot.available}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                          !slot.available ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                          timeWindow === slot.id ? 'shadow-md' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        style={timeWindow === slot.id ? { borderColor: pc, backgroundColor: pc + '10' } : {}}>
+                        <span className="text-lg">{slot.id === 'am' ? '🌅' : '🌇'}</span>
+                        <p className="text-sm font-medium mt-1" style={timeWindow === slot.id ? { color: pc } : { color: '#374151' }}>{slot.label}</p>
+                        {!slot.available && <p className="text-xs text-red-500 mt-1">Fully booked</p>}
+                        {slot.available && <p className="text-xs text-gray-400 mt-1">{slot.capacity - slot.booked} spot{slot.capacity - slot.booked !== 1 ? 's' : ''} left</p>}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-3 block">Time</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { id: 'morning', label: '8-10 AM', icon: '🌅' },
+                      { id: 'late-morning', label: '10-12 PM', icon: '☀️' },
+                      { id: 'afternoon', label: '1-3 PM', icon: '🌤️' },
+                      { id: 'late-afternoon', label: '3-5 PM', icon: '🌇' },
+                    ].map(s => (
+                      <button key={s.id} onClick={() => setTimeSlot(s.id)}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${timeSlot === s.id ? 'shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
+                        style={timeSlot === s.id ? { borderColor: pc, backgroundColor: pc + '10' } : {}}>
+                        <span className="text-lg">{s.icon}</span>
+                        <p className="text-sm font-medium mt-1" style={timeSlot === s.id ? { color: pc } : { color: '#374151' }}>{s.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -347,7 +453,7 @@ export default function BookingWidget({ slug }: { slug: string }) {
               </div>
               <input type="range" min="500" max="5000" step="100" value={sqft}
                 onChange={e => setSqft(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                 style={{ accentColor: pc }} />
               <div className="flex justify-between text-xs text-gray-400">
                 <span>500 sqft</span><span>5,000+ sqft</span>
@@ -393,9 +499,12 @@ export default function BookingWidget({ slug }: { slug: string }) {
                 {[
                   ['Hours', `${estimate.estimatedHours} hrs`],
                   ['Crew', `${estimate.crewSize} movers`],
-                  ['Rate', `$${estimate.hourlyRate}/hr`],
+                  ['Rate', estimate.couponApplied
+                    ? <span><span className="line-through text-gray-400">${estimate.originalHourlyRate}/hr</span> <span className="text-green-600 font-bold">${estimate.hourlyRate}/hr</span> <span className="text-green-600 text-xs">({estimate.couponDescription})</span></span>
+                    : `$${estimate.hourlyRate}/hr`
+                  ],
                 ].map(([l, v]) => (
-                  <div key={l as string} className="flex justify-between text-sm">
+                  <div key={l as string} className="flex justify-between text-sm items-center">
                     <span className="text-gray-600">{l}</span>
                     <span className="font-semibold text-gray-900">{v}</span>
                   </div>
@@ -406,6 +515,37 @@ export default function BookingWidget({ slug }: { slug: string }) {
                   <span className="font-bold text-lg" style={{ color: pc }}>${estimate.depositAmount}</span>
                 </div>
               </div>
+
+              {/* Coupon Code */}
+              <div className="border-t border-gray-100 pt-3">
+                {!showCoupon && !couponValid ? (
+                  <button onClick={() => setShowCoupon(true)} className="text-sm flex items-center gap-1.5 text-gray-500 hover:text-gray-700">
+                    <Tag className="h-3.5 w-3.5" /> Have a promo code?
+                  </button>
+                ) : couponValid ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">{couponValid.code} — {couponValid.description}</span>
+                    </div>
+                    <button onClick={removeCoupon} className="text-xs text-red-500 hover:text-red-700 font-medium">Remove</button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="Enter code" className="flex-1 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none uppercase" />
+                      <button onClick={validateCoupon} disabled={couponLoading || !couponCode.trim()}
+                        className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                        style={{ backgroundColor: pc }}>
+                        {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </button>
+                    </div>
+                    {couponError && <p className="text-xs text-red-500">{couponError}</p>}
+                  </div>
+                )}
+              </div>
+
               <p className="text-xs text-gray-400 text-center">Final price may vary based on actual items and time. Deposit secures your date.</p>
             </div>
           )}
@@ -488,6 +628,12 @@ export default function BookingWidget({ slug }: { slug: string }) {
                     <span className="font-medium text-gray-900">{v}</span>
                   </div>
                 ))}
+                {couponValid && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Promo</span>
+                    <span className="font-medium text-green-600">{couponValid.code} ({couponValid.description})</span>
+                  </div>
+                )}
               </div>
               <p className="text-sm text-gray-500">Confirmation sent to <strong>{email}</strong></p>
             </div>

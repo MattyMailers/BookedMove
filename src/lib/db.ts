@@ -178,4 +178,49 @@ export async function initDb() {
     sent_at TEXT DEFAULT (datetime('now')),
     status TEXT DEFAULT 'sent'
   )`);
+  // Phase 3: Availability
+  await query(`CREATE TABLE IF NOT EXISTS availability_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    booked_count INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'manual',
+    cached_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(company_id, date, source)
+  )`);
+  await query(`CREATE TABLE IF NOT EXISTS availability_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    available INTEGER DEFAULT 1,
+    max_moves INTEGER,
+    UNIQUE(company_id, date)
+  )`);
+  // Phase 3: Coupons
+  await query(`CREATE TABLE IF NOT EXISTS coupons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER NOT NULL,
+    code TEXT NOT NULL,
+    discount_type TEXT DEFAULT 'percent',
+    discount_value REAL DEFAULT 0,
+    min_bedrooms INTEGER,
+    expiration_date TEXT,
+    max_uses INTEGER,
+    times_used INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(company_id, code)
+  )`);
+  // Phase 3: new columns
+  await safeAlter('company_settings', 'max_moves_per_day', 'INTEGER DEFAULT 3');
+  await safeAlter('company_settings', 'availability_mode', "TEXT DEFAULT 'manual'");
+  await safeAlter('company_settings', 'default_time_window', "TEXT DEFAULT '8:30 AM - 12:00 PM'");
+  await safeAlter('company_settings', 'secondary_time_window', 'TEXT');
+  await safeAlter('company_settings', 'secondary_window_enabled', 'INTEGER DEFAULT 0');
+  await safeAlter('company_settings', 'max_moves_am', 'INTEGER DEFAULT 3');
+  await safeAlter('company_settings', 'max_moves_pm', 'INTEGER DEFAULT 2');
+  await safeAlter('company_settings', 'custom_domain', 'TEXT');
+  await safeAlter('bookings', 'coupon_code', 'TEXT');
+  await safeAlter('bookings', 'discount_amount', 'REAL');
+  await safeAlter('bookings', 'time_window', 'TEXT');
 }
