@@ -3,6 +3,8 @@ import { queryOne, run } from '@/lib/db';
 import { seedDb } from '@/lib/seed';
 import { signToken } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
+import { sendEmail } from '@/lib/email';
+import { welcomeEmail } from '@/lib/email-templates';
 export async function POST(req: NextRequest) {
   try {
     await seedDb();
@@ -17,6 +19,11 @@ export async function POST(req: NextRequest) {
       await run('INSERT INTO pricing_rules (company_id, move_size, bedrooms, base_price, hourly_rate, min_hours, crew_size) VALUES (?,?,?,?,?,?,?)', [cid, ...s]);
     await run('INSERT INTO company_users (company_id, email, password_hash, role, name) VALUES (?,?,?,?,?)', [cid, email, bcrypt.hashSync(password,10), 'owner', companyName]);
     const token = signToken({ userId: Number(cid), email, type: 'company', companyId: Number(cid) });
+    // Send welcome email
+    const brand = { name: companyName, primaryColor: '#2563eb' };
+    const welcome = welcomeEmail(brand);
+    sendEmail({ to: email, ...welcome, companyId: Number(cid), emailType: 'welcome' }).catch(() => {});
+
     const resp = NextResponse.json({ token, slug, companyId: Number(cid) });
     resp.cookies.set('token', token, { httpOnly: true, maxAge: 604800, path: '/' });
     return resp;

@@ -83,4 +83,29 @@ export async function initDb() {
   await safeAlter('bookings', 'square_footage', 'INTEGER');
   await safeAlter('bookings', 'fullness', 'TEXT');
   await safeAlter('company_users', 'role', "TEXT DEFAULT 'admin'");
+
+  // Phase 2: Payment gateway columns
+  await safeAlter('company_settings', 'authorize_net_login_id', 'TEXT');
+  await safeAlter('company_settings', 'authorize_net_transaction_key', 'TEXT');
+  await safeAlter('company_settings', 'payment_enabled', 'INTEGER DEFAULT 0');
+  await safeAlter('company_settings', 'payment_mode', "TEXT DEFAULT 'deposit'");
+  await safeAlter('company_settings', 'payment_timing', "TEXT DEFAULT 'at_booking'");
+  await safeAlter('company_settings', 'email_notifications', 'TEXT');
+  await safeAlter('company_settings', 'custom_css', 'TEXT');
+
+  // Phase 2: Payment tracking on bookings
+  await safeAlter('bookings', 'payment_status', "TEXT DEFAULT 'none'");
+  await safeAlter('bookings', 'payment_amount', 'REAL');
+  await safeAlter('bookings', 'transaction_id', 'TEXT');
+
+  // Phase 2: Email log table
+  await c.execute(`CREATE TABLE IF NOT EXISTS email_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER,
+    booking_id INTEGER,
+    email_type TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    sent_at TEXT DEFAULT (datetime('now')),
+    status TEXT DEFAULT 'sent'
+  )`);
 }

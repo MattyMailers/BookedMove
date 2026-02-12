@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
   try {
     await seedDb();
     const co = await queryOne(
-      'SELECT c.*, cs.base_rate_per_hour, cs.min_hours, cs.deposit_type, cs.deposit_amount, cs.mileage_rate, cs.form_config FROM companies c LEFT JOIN company_settings cs ON cs.company_id = c.id WHERE c.slug = ?',
+      'SELECT c.*, cs.base_rate_per_hour, cs.min_hours, cs.deposit_type, cs.deposit_amount, cs.mileage_rate, cs.form_config, cs.payment_enabled, cs.payment_mode, cs.payment_timing, cs.custom_css, cs.authorize_net_login_id FROM companies c LEFT JOIN company_settings cs ON cs.company_id = c.id WHERE c.slug = ?',
       [params.slug]
     );
     if (!co) return corsResponse({ error: 'Not found' }, 404);
@@ -28,6 +28,14 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       },
       formConfig,
       pricingRules: pr,
+      payment: co.payment_enabled ? {
+        enabled: true,
+        mode: co.payment_mode || 'deposit',
+        timing: co.payment_timing || 'at_booking',
+        // Send client key (API Login ID) for Accept.js — NOT the transaction key
+        clientKey: co.authorize_net_login_id ? (() => { try { const { decrypt } = require('@/lib/encryption'); return decrypt(String(co.authorize_net_login_id)); } catch { return null; } })() : null,
+      } : { enabled: false },
+      customCss: co.custom_css || null,
     });
   } catch (e: any) {
     return corsResponse({ error: e.message }, 500);

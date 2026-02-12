@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
       const s = settings as any;
       if (s.google_maps_key) { try { s.google_maps_key_masked = maskKey(decrypt(String(s.google_maps_key))); } catch { s.google_maps_key_masked = maskKey(String(s.google_maps_key)); } s.google_maps_key_set = true; }
       if (s.smartmoving_api_key) { try { s.smartmoving_api_key_masked = maskKey(decrypt(String(s.smartmoving_api_key))); } catch { s.smartmoving_api_key_masked = maskKey(String(s.smartmoving_api_key)); } s.smartmoving_api_key_set = true; }
+      if (s.authorize_net_login_id) { try { s.authorize_net_login_id_masked = maskKey(decrypt(String(s.authorize_net_login_id))); } catch { s.authorize_net_login_id_masked = maskKey(String(s.authorize_net_login_id)); } s.authorize_net_login_id_set = true; }
+      if (s.authorize_net_transaction_key) { try { s.authorize_net_transaction_key_masked = maskKey(decrypt(String(s.authorize_net_transaction_key))); } catch { s.authorize_net_transaction_key_masked = maskKey(String(s.authorize_net_transaction_key)); } s.authorize_net_transaction_key_set = true; }
     }
     return NextResponse.json({ company, settings });
   } catch (e: any) {
@@ -55,6 +57,24 @@ export async function PUT(req: NextRequest) {
       add('stripe_connect_account_id', s.stripe_connect_account_id);
       if (gmKey !== undefined) add('google_maps_key', gmKey);
       if (smKey !== undefined) add('smartmoving_api_key', smKey);
+
+      // Authorize.net credentials
+      let anLogin = s.authorize_net_login_id;
+      if (anLogin && !anLogin.startsWith('****')) { try { anLogin = encrypt(anLogin); } catch {} }
+      else if (anLogin?.startsWith('****')) anLogin = undefined;
+      if (anLogin !== undefined) add('authorize_net_login_id', anLogin);
+
+      let anKey = s.authorize_net_transaction_key;
+      if (anKey && !anKey.startsWith('****')) { try { anKey = encrypt(anKey); } catch {} }
+      else if (anKey?.startsWith('****')) anKey = undefined;
+      if (anKey !== undefined) add('authorize_net_transaction_key', anKey);
+
+      // Payment settings
+      if (s.payment_enabled !== undefined) add('payment_enabled', s.payment_enabled ? 1 : 0);
+      add('payment_mode', s.payment_mode);
+      add('payment_timing', s.payment_timing);
+      add('email_notifications', s.email_notifications ? JSON.stringify(s.email_notifications) : undefined);
+      add('custom_css', s.custom_css);
 
       if (sets.length > 0) {
         args.push(p.companyId);

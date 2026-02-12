@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const t = localStorage.getItem('token');
@@ -96,6 +97,21 @@ export default function Dashboard() {
       body: JSON.stringify({ formConfig }),
     });
     setSaving(false);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch('/api/company/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const d = await r.json();
+      if (d.url) { setCompany({ ...company, logo_url: d.url }); }
+      else { alert(d.error || 'Upload failed'); }
+    } catch { alert('Upload failed'); }
+    setUploading(false);
   };
 
   const updateBookingStatus = async (id: number, status: string) => {
@@ -691,9 +707,17 @@ export default function Dashboard() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Logo URL</label>
-                  <input type="text" value={company.logo_url || ''} onChange={e => setCompany({ ...company, logo_url: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="https://..." />
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Company Logo</label>
+                  <div className="flex items-center gap-4">
+                    {company.logo_url && (
+                      <img src={company.logo_url} alt="Logo" className="h-12 w-12 rounded-xl object-cover border-2 border-gray-200" />
+                    )}
+                    <label className={`flex items-center gap-2 px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-medium cursor-pointer hover:bg-gray-50 ${uploading ? 'opacity-50' : ''}`}>
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      {company.logo_url ? 'Change' : 'Upload'}
+                      <input type="file" accept="image/jpeg,image/png,image/svg+xml,image/webp" onChange={handleLogoUpload} className="hidden" disabled={uploading} />
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Primary Color</label>
@@ -768,6 +792,70 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            {/* Payment Gateway */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Payment Gateway (Authorize.net)</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="font-medium text-gray-900">Enable Payments</p>
+                    <p className="text-sm text-gray-500">Collect deposits or full payment through your widget</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={!!settings.payment_enabled}
+                      onChange={e => setSettings({ ...settings, payment_enabled: e.target.checked })}
+                      className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
+                  </label>
+                </div>
+                {settings.payment_enabled && (
+                  <>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">API Login ID</label>
+                        <input type="password" value={settings.authorize_net_login_id || ''} onChange={e => setSettings({ ...settings, authorize_net_login_id: e.target.value })}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none"
+                          placeholder={settings.authorize_net_login_id_set ? '****' + (settings.authorize_net_login_id_masked?.slice(4) || '') : 'Enter Login ID'} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Transaction Key</label>
+                        <input type="password" value={settings.authorize_net_transaction_key || ''} onChange={e => setSettings({ ...settings, authorize_net_transaction_key: e.target.value })}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none"
+                          placeholder={settings.authorize_net_transaction_key_set ? '****' + (settings.authorize_net_transaction_key_masked?.slice(4) || '') : 'Enter Transaction Key'} />
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Payment Mode</label>
+                        <select value={settings.payment_mode || 'deposit'} onChange={e => setSettings({ ...settings, payment_mode: e.target.value })}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+                          <option value="deposit">Deposit Only</option>
+                          <option value="full">Full Estimated Amount</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Payment Timing</label>
+                        <select value={settings.payment_timing || 'at_booking'} onChange={e => setSettings({ ...settings, payment_timing: e.target.value })}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none">
+                          <option value="at_booking">At Booking (in widget)</option>
+                          <option value="later">Later (manual)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Custom CSS */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Custom Widget CSS</h2>
+              <p className="text-sm text-gray-500 mb-4">Add custom CSS to further style your booking widget</p>
+              <textarea value={settings.custom_css || ''} onChange={e => setSettings({ ...settings, custom_css: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none font-mono text-sm h-28 resize-none"
+                placeholder=".bm-widget { /* your styles */ }" />
+            </div>
+
             <button onClick={saveSettings} disabled={saving}
               className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
               {saving ? 'Saving...' : 'Save All Settings'}

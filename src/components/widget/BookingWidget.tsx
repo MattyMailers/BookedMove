@@ -49,6 +49,9 @@ export default function BookingWidget({ slug }: { slug: string }) {
   const [destSuggestions, setDestSuggestions] = useState<any[]>([]);
   const [showOriginSugg, setShowOriginSugg] = useState(false);
   const [showDestSugg, setShowDestSugg] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
   const base = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -57,7 +60,25 @@ export default function BookingWidget({ slug }: { slug: string }) {
   }, [base, slug, sessionId]);
 
   useEffect(() => {
-    fetch(`${base}/api/widget/${slug}/config`).then(r => r.json()).then(d => { setConfig(d); setLoading(false); trackEvent('widget_loaded'); }).catch(() => { setError('Failed to load'); setLoading(false); });
+    fetch(`${base}/api/widget/${slug}/config`).then(r => r.json()).then(d => {
+      setConfig(d);
+      setLoading(false);
+      trackEvent('widget_loaded');
+      // Load Accept.js if payments enabled
+      if (d?.payment?.enabled && !(window as any).Accept) {
+        const isSandbox = typeof window !== 'undefined' && window.location.hostname !== 'bookedmove.com';
+        const script = document.createElement('script');
+        script.src = isSandbox ? 'https://jstest.authorize.net/v1/Accept.js' : 'https://js.authorize.net/v1/Accept.js';
+        script.charset = 'utf-8';
+        document.head.appendChild(script);
+      }
+      // Inject custom CSS if present
+      if (d?.customCss) {
+        const style = document.createElement('style');
+        style.textContent = d.customCss;
+        document.head.appendChild(style);
+      }
+    }).catch(() => { setError('Failed to load'); setLoading(false); });
   }, [slug, base, trackEvent]);
 
   const pc = config?.company?.primaryColor || '#2563eb';
@@ -71,6 +92,11 @@ export default function BookingWidget({ slug }: { slug: string }) {
   if (formSteps.squareFootage === true) activeSteps.push('squareFootage');
   if (formSteps.fullness === true) activeSteps.push('fullness');
   activeSteps.push('estimate', 'contactInfo');
+  // Add payment step if enabled and timing is at_booking
+  const paymentConfig = config?.payment;
+  if (paymentConfig?.enabled && paymentConfig?.timing === 'at_booking') {
+    activeSteps.push('payment');
+  }
   const CONFIRMED_STEP = activeSteps.length;
 
   const fetchPlaces = async (input: string, setter: (v: any[]) => void) => {
@@ -102,11 +128,69 @@ export default function BookingWidget({ slug }: { slug: string }) {
       const d = await r.json();
       if (d.bookingRef) {
         setBookingRef(d.bookingRef);
-        await fetch(`${base}/api/widget/${slug}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingRef: d.bookingRef }) });
-        setStep(CONFIRMED_STEP);
+        // If payment step follows, just advance; otherwise confirm and go to done
+        if (paymentConfig?.enabled && paymentConfig?.timing === 'at_booking') {
+          setStep(s => s + 1);
+        } else {
+          await fetch(`${base}/api/widget/${slug}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingRef: d.bookingRef }) });
+          setStep(CONFIRMED_STEP);
+        }
       } else { setError(d.error || 'Failed'); trackEvent('booking_failed'); }
     } catch { setError('Failed'); trackEvent('booking_failed'); }
     setSubmitting(false);
+  };
+
+  const handlePayment = async () => {
+    setPaymentProcessing(true); setPaymentError('');
+    try {
+      // Accept.js dispatches response to window handler
+      const acceptResponse: any = await new Promise((resolve, reject) => {
+        (window as any).acceptResponseHandler = (response: any) => {
+          if (response.messages.resultCode === 'Error') {
+            reject(new Error(response.messages.message[0].text));
+          } else {
+            resolve(response);
+          }
+        };
+        // Dispatch Accept.js
+        const secureData: any = {};
+        const cardNumber = (document.getElementById('bm-card-number') as HTMLInputElement)?.value?.replace(/\s/g, '');
+        const expMonth = (document.getElementById('bm-exp-month') as HTMLInputElement)?.value;
+        const expYear = (document.getElementById('bm-exp-year') as HTMLInputElement)?.value;
+        const cvv = (document.getElementById('bm-cvv') as HTMLInputElement)?.value;
+        if (!cardNumber || !expMonth || !expYear || !cvv) {
+          reject(new Error('Please fill in all card fields')); return;
+        }
+        secureData.cardData = { cardNumber, month: expMonth, year: expYear, cardCode: cvv };
+        secureData.authData = { clientKey: paymentConfig.clientKey, apiLoginID: paymentConfig.clientKey };
+        (window as any).Accept.dispatchData(secureData, (window as any).acceptResponseHandler);
+      });
+
+      // Send nonce to our API
+      const r = await fetch(`${base}/api/widget/${slug}/payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingRef,
+          opaqueDataDescriptor: acceptResponse.opaqueData.dataDescriptor,
+          opaqueDataValue: acceptResponse.opaqueData.dataValue,
+        }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        setPaymentComplete(true);
+        trackEvent('payment_completed');
+        await fetch(`${base}/api/widget/${slug}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingRef }) });
+        setStep(CONFIRMED_STEP);
+      } else {
+        setPaymentError(d.error || 'Payment failed');
+        trackEvent('payment_failed');
+      }
+    } catch (e: any) {
+      setPaymentError(e.message || 'Payment failed');
+      trackEvent('payment_failed');
+    }
+    setPaymentProcessing(false);
   };
 
   const currentStepId = activeSteps[step] || '';
@@ -120,6 +204,7 @@ export default function BookingWidget({ slug }: { slug: string }) {
       case 'fullness': return true;
       case 'estimate': return estimate;
       case 'contactInfo': return name && email;
+      case 'payment': return true;
       default: return true;
     }
   };
@@ -347,6 +432,46 @@ export default function BookingWidget({ slug }: { slug: string }) {
             </div>
           )}
 
+          {/* Payment */}
+          {currentStepId === 'payment' && (
+            <div className="space-y-4">
+              <div className="text-center mb-4">
+                <DollarSign className="h-10 w-10 mx-auto mb-2" style={{ color: pc }} />
+                <p className="text-lg font-bold text-gray-900">
+                  {paymentConfig?.mode === 'full' ? 'Pay Estimated Total' : 'Pay Deposit to Book'}
+                </p>
+                <p className="text-3xl font-bold mt-1" style={{ color: pc }}>
+                  ${paymentConfig?.mode === 'full' ? estimate?.estimatedPrice?.toLocaleString() : estimate?.depositAmount?.toLocaleString()}
+                </p>
+              </div>
+              {paymentError && <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm">{paymentError}</div>}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">Card Number</label>
+                <input id="bm-card-number" type="text" placeholder="4111 1111 1111 1111" maxLength={19}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-900"
+                  onChange={e => { let v = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim(); e.target.value = v; }} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Month</label>
+                  <input id="bm-exp-month" type="text" placeholder="MM" maxLength={2}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-900" />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Year</label>
+                  <input id="bm-exp-year" type="text" placeholder="YYYY" maxLength={4}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-900" />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-2 block">CVV</label>
+                  <input id="bm-cvv" type="text" placeholder="123" maxLength={4}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-900" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 text-center">🔒 Your card info is securely processed and never stored on our servers.</p>
+            </div>
+          )}
+
           {/* Confirmed */}
           {step === CONFIRMED_STEP && (
             <div className="text-center py-6 space-y-4">
@@ -378,11 +503,11 @@ export default function BookingWidget({ slug }: { slug: string }) {
                 <ArrowLeft className="h-4 w-4" />Back
               </button>
             )}
-            <button onClick={next} disabled={!canProceed() || submitting}
+            <button onClick={currentStepId === 'payment' ? handlePayment : next} disabled={!canProceed() || submitting || paymentProcessing}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold transition-all disabled:opacity-50"
               style={{ backgroundColor: pc }}>
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                <>{currentStepId === 'contactInfo' ? 'Book My Move' : 'Continue'}{currentStepId !== 'contactInfo' && <ArrowRight className="h-4 w-4" />}</>
+              {(submitting || paymentProcessing) ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                <>{currentStepId === 'payment' ? `Pay $${paymentConfig?.mode === 'full' ? estimate?.estimatedPrice : estimate?.depositAmount}` : currentStepId === 'contactInfo' ? 'Book My Move' : 'Continue'}{currentStepId !== 'contactInfo' && currentStepId !== 'payment' && <ArrowRight className="h-4 w-4" />}</>
               )}
             </button>
           </div>
