@@ -2,18 +2,21 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const url = process.env.TURSO_DATABASE_URL || 'file:local.db';
-    const token = process.env.TURSO_AUTH_TOKEN;
+    const url = process.env.TURSO_DATABASE_URL || '';
     
-    // Try raw URL parse first
-    try { new URL(url); } catch(e: any) { return NextResponse.json({ step: 'url_parse', url: url.substring(0, 40), error: e.message }); }
+    // Test what encodeBaseUrl produces
+    const { expandConfig } = await import('@libsql/core/config');
+    const config = expandConfig({ url, authToken: process.env.TURSO_AUTH_TOKEN });
     
-    // Try creating client
-    const { createClient } = await import('@libsql/client');
-    const client = createClient({ url, authToken: token });
-    const result = await client.execute('SELECT 1 as test');
-    return NextResponse.json({ success: true, result: result.rows });
+    return NextResponse.json({ 
+      inputUrl: url.substring(0, 50),
+      scheme: config.scheme,
+      authority: config.authority,
+      path: config.path,
+      tls: config.tls,
+      nodeVersion: process.version,
+    });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message, stack: e.stack?.substring(0, 800) }, { status: 500 });
+    return NextResponse.json({ error: e.message, stack: e.stack?.substring(0, 500) }, { status: 500 });
   }
 }
