@@ -1262,10 +1262,19 @@ export default function Dashboard() {
               ))}
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Preview</h3>
-              <a href={embedCode.directUrl} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline text-sm">
-                <ExternalLink className="h-4 w-4" /> Open widget in new tab
-              </a>
+              <h3 className="font-semibold text-gray-900 mb-3">Preview & Share</h3>
+              <div className="space-y-3">
+                <a href={standaloneUrl} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline text-sm font-medium">
+                  <ExternalLink className="h-4 w-4" /> Open standalone booking page
+                </a>
+                <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2">
+                  <input readOnly value={standaloneUrl} className="flex-1 bg-transparent text-sm text-gray-700 outline-none truncate" />
+                  <button onClick={() => { navigator.clipboard.writeText(standaloneUrl); }} className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap">
+                    Copy Link
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">Share this link in ads, texts, social media, or anywhere your customers can click.</p>
+              </div>
             </div>
           </div>
         )}
