@@ -65,8 +65,22 @@ export async function initDb() {
     "CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, name TEXT, created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS company_users (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT DEFAULT 'admin', name TEXT, created_at TEXT DEFAULT (datetime('now')), UNIQUE(company_id, email))",
     "CREATE TABLE IF NOT EXISTS subscription_events (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL, event_type TEXT NOT NULL, stripe_event_id TEXT, amount REAL, details TEXT, created_at TEXT DEFAULT (datetime('now')))",
+    "CREATE TABLE IF NOT EXISTS widget_events (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL, event_type TEXT NOT NULL, step TEXT, session_id TEXT, metadata TEXT, created_at TEXT DEFAULT (datetime('now')))",
+    "CREATE TABLE IF NOT EXISTS invitations (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL, email TEXT NOT NULL, role TEXT DEFAULT 'viewer', token TEXT NOT NULL UNIQUE, accepted INTEGER DEFAULT 0, invited_by INTEGER, created_at TEXT DEFAULT (datetime('now')))",
   ];
   for (const sql of stmts) {
     await c.execute(sql);
   }
+  // Add columns if missing (safe ALTER TABLE)
+  const safeAlter = async (table: string, col: string, def: string) => {
+    try { await c.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
+  };
+  await safeAlter('company_settings', 'form_config', "TEXT DEFAULT '{}'");
+  await safeAlter('company_settings', 'onboarding_completed', 'INTEGER DEFAULT 0');
+  await safeAlter('company_settings', 'google_maps_key', 'TEXT');
+  await safeAlter('company_settings', 'service_areas', "TEXT DEFAULT '[]'");
+  await safeAlter('bookings', 'notes', 'TEXT');
+  await safeAlter('bookings', 'square_footage', 'INTEGER');
+  await safeAlter('bookings', 'fullness', 'TEXT');
+  await safeAlter('company_users', 'role', "TEXT DEFAULT 'admin'");
 }

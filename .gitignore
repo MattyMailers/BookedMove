@@ -4,3 +4,5 @@ node_modules
 local.db
 local.db-wal
 local.db-shm
+.vercel
+.env*.local

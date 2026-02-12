@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     await run('INSERT INTO company_settings (company_id) VALUES (?)', [cid]);
     for (const s of [['studio',0,350,125,2,2],['1-bedroom',1,450,145,3,2],['2-bedroom',2,650,165,4,3],['3-bedroom',3,850,185,5,3],['4-bedroom',4,1100,205,6,4]])
       await run('INSERT INTO pricing_rules (company_id, move_size, bedrooms, base_price, hourly_rate, min_hours, crew_size) VALUES (?,?,?,?,?,?,?)', [cid, ...s]);
-    await run('INSERT INTO company_users (company_id, email, password_hash, role, name) VALUES (?,?,?,?,?)', [cid, email, bcrypt.hashSync(password,10), 'admin', companyName]);
+    await run('INSERT INTO company_users (company_id, email, password_hash, role, name) VALUES (?,?,?,?,?)', [cid, email, bcrypt.hashSync(password,10), 'owner', companyName]);
     const token = signToken({ userId: Number(cid), email, type: 'company', companyId: Number(cid) });
     const resp = NextResponse.json({ token, slug, companyId: Number(cid) });
     resp.cookies.set('token', token, { httpOnly: true, maxAge: 604800, path: '/' });
