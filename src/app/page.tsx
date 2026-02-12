@@ -1,25 +1,26 @@
 import Link from 'next/link';
-import { Truck, CheckCircle2, ArrowRight, BarChart3, Palette, Code2, Shield, Zap, Users, Star } from 'lucide-react';
+import Image from 'next/image';
+import { CheckCircle2, ArrowRight, BarChart3, Palette, Code2, Shield, Zap, Users, Star, Play, Phone, Calendar, DollarSign, Clock } from 'lucide-react';
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
-      <nav className="border-b bg-white/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">B</div>
-            <span className="text-xl font-bold text-gray-900">BookedMove</span>
+      <nav className="border-b border-gray-100 bg-white/90 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-600/20">B</div>
+            <span className="text-xl font-extrabold text-gray-900 tracking-tight">BookedMove</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
+            <a href="#how-it-works" className="hover:text-gray-900 transition-colors">How It Works</a>
             <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
             <a href="#pricing" className="hover:text-gray-900 transition-colors">Pricing</a>
-            <a href="#testimonials" className="hover:text-gray-900 transition-colors">Reviews</a>
           </div>
-          <div className="flex gap-3">
-            <Link href="/dashboard" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors">Log In</Link>
-            <Link href="/signup" className="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-600/20">
-              Get Started Free
+          <div className="flex gap-3 items-center">
+            <Link href="/login" className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm">Log In</Link>
+            <Link href="/signup" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold transition-all shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30 text-sm">
+              Start Free Trial
             </Link>
           </div>
         </div>
@@ -27,63 +28,105 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50" />
-        <div className="relative max-w-6xl mx-auto px-4 pt-20 pb-24 md:pt-28 md:pb-32">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-8">
-              <Zap className="h-4 w-4" />
-              Built specifically for moving companies
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/80 via-white to-white" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 md:pt-24 md:pb-28">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-full text-xs font-semibold mb-6 tracking-wide uppercase">
+                <Zap className="h-3.5 w-3.5" />
+                Built by movers, for movers
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-5 leading-[1.08] tracking-tight">
+                Stop losing moves to your voicemail.
+              </h1>
+              <p className="text-lg text-gray-500 mb-8 leading-relaxed max-w-lg">
+                Your customers want to book online. Give them a beautiful booking widget that shows instant estimates, collects deposits, and fills your calendar — even at 2am.
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                <Link href="/signup" className="group px-7 py-3.5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 font-semibold shadow-xl shadow-blue-600/25 transition-all hover:shadow-2xl hover:shadow-blue-600/30 flex items-center gap-2">
+                  Start Free Trial <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link href="/widget/ihaul" className="px-7 py-3.5 border-2 border-gray-200 text-gray-700 rounded-2xl hover:border-gray-300 hover:bg-gray-50 font-semibold transition-all flex items-center gap-2">
+                  <Play className="h-4 w-4" /> Live Demo
+                </Link>
+              </div>
+              <div className="flex items-center gap-6 mt-8 text-sm text-gray-400">
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-500" /> No credit card</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-500" /> 14-day trial</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-500" /> Cancel anytime</span>
+              </div>
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-[1.1] tracking-tight">
-              The Booking System<br />
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Built for Movers</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Beautiful booking widgets. Instant price estimates. Deposits collected automatically.
-              Your customers book 24/7 while you sleep.
-            </p>
-            <div className="flex gap-4 justify-center flex-wrap">
-              <Link href="/signup" className="group px-8 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 font-semibold text-lg shadow-xl shadow-blue-600/25 transition-all hover:shadow-2xl hover:shadow-blue-600/30 flex items-center gap-2">
-                Start Free Trial <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link href="/widget/ihaul" className="px-8 py-4 border-2 border-gray-200 text-gray-700 rounded-2xl hover:border-gray-300 hover:bg-gray-50 font-semibold text-lg transition-all">
-                See Demo Widget
-              </Link>
+            <div className="relative">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-gray-900/10 border border-gray-100">
+                <Image src="/images/hero-moving-day.png" alt="Happy couple booking their move online" width={600} height={400} className="w-full h-auto" priority />
+              </div>
+              {/* Floating stats cards */}
+              <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Deposit Collected</p>
+                  <p className="text-lg font-bold text-gray-900">$215.00</p>
+                </div>
+              </div>
+              <div className="absolute -top-3 -right-3 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">New Booking!</p>
+                  <p className="text-sm font-bold text-gray-900">March 15, 8am</p>
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-gray-400 mt-6">No credit card required • 14-day free trial • Cancel anytime</p>
           </div>
         </div>
       </section>
 
-      {/* Social proof bar */}
-      <section className="border-y bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-center justify-center gap-8 text-sm text-gray-500">
-          <span className="flex items-center gap-1"><Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> Trusted by 200+ moving companies</span>
-          <span>•</span>
-          <span>50,000+ bookings processed</span>
-          <span>•</span>
-          <span>$12M+ in deposits collected</span>
+      {/* The Problem */}
+      <section className="py-16 border-y border-gray-100 bg-gray-50/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            {[
+              { stat: '67%', label: 'of customers prefer to book online' },
+              { stat: '3 in 4', label: 'will leave if they can\'t book instantly' },
+              { stat: '40%', label: 'of calls go to voicemail during moves' },
+              { stat: '2x', label: 'more bookings with online scheduling' },
+            ].map((item, i) => (
+              <div key={i}>
+                <p className="text-3xl md:text-4xl font-extrabold text-blue-600 mb-1">{item.stat}</p>
+                <p className="text-sm text-gray-500 leading-snug">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="py-24" id="features">
-        <div className="max-w-6xl mx-auto px-4">
+      <section className="py-20 md:py-28" id="how-it-works">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <p className="text-blue-600 font-semibold mb-3">HOW IT WORKS</p>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Up and running in 5 minutes</h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">No developers needed. No complex setup. Just sign up, customize, and embed.</p>
+            <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">How It Works</p>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">Live on your site in 5 minutes</h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">No developers. No complex setup. Sign up, customize, embed. Done.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             {[
-              { step: '01', icon: Palette, title: 'Customize Your Widget', desc: 'Set your brand colors, logo, pricing rules, and deposit requirements. Toggle steps on or off. Add custom questions.' },
-              { step: '02', icon: Code2, title: 'Embed on Your Site', desc: 'Copy one line of code. Works on WordPress, Wix, Squarespace, or any website. It just works.' },
-              { step: '03', icon: BarChart3, title: 'Collect & Track', desc: 'Customers book online with instant estimates. You get notified, deposits hit your account, analytics show everything.' },
+              { step: '1', icon: Palette, title: 'Make It Yours', desc: 'Upload your logo. Set your colors. Configure pricing, crew sizes, and deposit rules. Add custom questions if you want. Takes 3 minutes.', color: 'blue' },
+              { step: '2', icon: Code2, title: 'Drop It On Your Site', desc: 'Copy one line of embed code. Paste it on your website. Works with WordPress, Wix, Squarespace, GoDaddy — anything with HTML.', color: 'indigo' },
+              { step: '3', icon: BarChart3, title: 'Watch Bookings Roll In', desc: 'Customers get instant estimates and book right there. You get notified. Deposits hit your account. All while you\'re running jobs.', color: 'violet' },
             ].map((item) => (
-              <div key={item.step} className="relative group">
-                <div className="bg-white p-8 rounded-3xl border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all duration-300">
-                  <div className="text-6xl font-bold text-gray-100 mb-4">{item.step}</div>
-                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+              <div key={item.step} className="group relative">
+                <div className="bg-white p-8 rounded-3xl border border-gray-100 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-600/5 transition-all duration-500 h-full">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-${item.color}-50 text-${item.color}-600 font-extrabold text-lg`}>
+                      {item.step}
+                    </div>
+                    <div className="h-px flex-1 bg-gray-100" />
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mb-5">
                     <item.icon className="h-6 w-6 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
@@ -95,28 +138,102 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features grid */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <p className="text-blue-600 font-semibold mb-3">FEATURES</p>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Everything you need to book more moves</h2>
+      {/* Dashboard preview */}
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">Your Command Center</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-5 tracking-tight">Know exactly what&apos;s happening</h2>
+              <p className="text-gray-500 leading-relaxed mb-8">
+                See every booking, every dollar, every customer — in real-time. Track where people drop off your widget and fix it. Export to CSV. Update statuses. Send confirmations. All from one clean dashboard.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: BarChart3, text: 'Bookings, revenue, and conversion rates at a glance' },
+                  { icon: Users, text: 'Invite your team with owner, admin, or viewer roles' },
+                  { icon: Clock, text: 'See exactly when and where customers drop off' },
+                  { icon: Shield, text: 'Your API keys are AES-256 encrypted — never exposed' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                      <item.icon className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <p className="text-gray-600">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <div className="rounded-3xl overflow-hidden shadow-2xl shadow-gray-900/10 border border-gray-100">
+                <Image src="/images/dashboard-preview.png" alt="BookedMove dashboard showing booking analytics" width={600} height={400} className="w-full h-auto" />
+              </div>
+            </div>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+      </section>
+
+      {/* Widget preview */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="order-2 md:order-1 flex justify-center">
+              <div className="relative w-[280px]">
+                <div className="rounded-[2.5rem] overflow-hidden shadow-2xl shadow-gray-900/15 border-8 border-gray-900 bg-gray-900">
+                  <Image src="/images/widget-phone.png" alt="BookedMove booking widget on mobile phone" width={280} height={560} className="w-full h-auto" />
+                </div>
+                {/* Phone notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-gray-900 rounded-b-2xl" />
+              </div>
+            </div>
+            <div className="order-1 md:order-2">
+              <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">The Booking Widget</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-5 tracking-tight">Beautiful on every screen</h2>
+              <p className="text-gray-500 leading-relaxed mb-8">
+                Your customers pick their addresses (with Google autocomplete), choose their move date, tell you about their home, and see an instant price — all in a smooth, guided flow that feels like using a top-tier app.
+              </p>
+              <div className="space-y-3">
+                {[
+                  'Google Places autocomplete for addresses',
+                  'Square footage slider & "how full" selector',
+                  'Real-time price estimates from your pricing rules',
+                  'Authorize.net deposit collection built in',
+                  'Custom questions & toggleable steps',
+                  'Your branding, your colors, your logo',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0" />
+                    <p className="text-gray-600 text-sm">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features grid */}
+      <section className="py-20 bg-gray-50/80" id="features">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">Everything You Need</p>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">Built for the way movers actually work</h2>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { icon: '💰', title: 'Instant Estimates', desc: 'Customers see real-time pricing based on your rules — home size, distance, time of year.' },
-              { icon: '🎨', title: 'Custom Branding', desc: 'Your logo, your colors, your questions. The widget looks like part of your website.' },
-              { icon: '📊', title: 'Analytics Dashboard', desc: 'See bookings, conversion rates, revenue, and drop-off points. Know what\'s working.' },
-              { icon: '👥', title: 'Team Management', desc: 'Invite your team with role-based access. Owners, admins, and viewers.' },
-              { icon: '🔒', title: 'Encrypted API Keys', desc: 'Your Google Maps, SmartMoving, and Stripe keys are AES-256 encrypted. Never exposed.' },
-              { icon: '📱', title: 'Mobile-First Design', desc: 'Gorgeous on every device. Your customers book from their phone as easily as desktop.' },
-              { icon: '📋', title: 'Booking Management', desc: 'Status updates, notes, search, filter, CSV export. Manage everything in one place.' },
-              { icon: '🔌', title: 'SmartMoving Integration', desc: 'Bookings sync to SmartMoving CRM automatically. No double entry.' },
-              { icon: '⚡', title: 'Widget Analytics', desc: 'Track loads, step completions, submissions, and failures. See your funnel.' },
+              { icon: '💰', title: 'Instant Estimates', desc: 'Customers see real-time pricing based on your rates, home size, and move details.' },
+              { icon: '🎨', title: 'Full Branding Control', desc: 'Your logo, colors, and custom CSS. The widget looks like you built it.' },
+              { icon: '📊', title: 'Conversion Analytics', desc: 'See exactly where customers drop off. Fix bottlenecks. Book more moves.' },
+              { icon: '👥', title: 'Multi-User Teams', desc: 'Invite dispatchers and office staff with role-based access. Everyone stays in the loop.' },
+              { icon: '💳', title: 'Deposit Collection', desc: 'Authorize.net gateway built in. Collect deposits at booking. Reduce no-shows.' },
+              { icon: '📱', title: 'Mobile-First', desc: 'Over 70% of your customers are on their phone. The widget is gorgeous on every device.' },
+              { icon: '📋', title: 'Booking Management', desc: 'Search, filter, update status, add notes, export CSV. Your single source of truth.' },
+              { icon: '📧', title: 'Auto Notifications', desc: 'Branded emails for confirmations, status updates, and payment receipts. All automatic.' },
+              { icon: '🔒', title: 'Enterprise Security', desc: 'AES-256 encrypted API keys. PCI-compliant payments. Your data stays yours.' },
             ].map((f, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
-                <div className="text-3xl mb-3">{f.icon}</div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">{f.title}</h3>
+              <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-blue-100 hover:shadow-lg hover:shadow-blue-600/5 transition-all duration-300">
+                <div className="text-2xl mb-3">{f.icon}</div>
+                <h3 className="text-base font-bold text-gray-900 mb-1.5">{f.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -124,35 +241,56 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-24" id="pricing">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <p className="text-blue-600 font-semibold mb-3">PRICING</p>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Simple, transparent pricing</h2>
-            <p className="text-xl text-gray-500">No hidden fees. No surprise charges. Cancel anytime.</p>
+      {/* Social proof / movers image */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="rounded-3xl overflow-hidden shadow-2xl shadow-gray-900/10">
+              <Image src="/images/movers-team.png" alt="Professional moving crew" width={600} height={400} className="w-full h-auto" />
+            </div>
+            <div>
+              <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">Built by Movers</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-5 tracking-tight">We know this industry because we live it</h2>
+              <p className="text-gray-500 leading-relaxed mb-6">
+                BookedMove was built by a moving company owner who got tired of missing calls during jobs. We know the pain of lost leads, voicemail tag, and customers who go to your competitor because they couldn&apos;t book right now.
+              </p>
+              <p className="text-gray-500 leading-relaxed">
+                Every feature was designed around how real moving companies actually operate — from crew-size-based pricing to deposit requirements that reduce no-shows.
+              </p>
+            </div>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="py-20 bg-gradient-to-b from-gray-50/50 to-white" id="pricing">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">Pricing</p>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">One booking pays for a year</h2>
+            <p className="text-lg text-gray-500">Seriously. Your first online booking covers the cost. Everything after is profit.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
-                name: 'Starter', price: 49, desc: 'For small movers getting started',
-                features: ['1 booking widget', 'Up to 50 bookings/mo', 'Basic analytics', 'Email support', 'Custom branding'],
+                name: 'Starter', price: 49, desc: 'Perfect for getting started',
+                features: ['1 booking widget', 'Up to 50 bookings/mo', 'Basic analytics', 'Custom branding', 'Email notifications', 'Email support'],
                 cta: 'Start Free Trial', popular: false,
               },
               {
-                name: 'Pro', price: 99, desc: 'For growing moving companies',
-                features: ['Unlimited widgets', 'Unlimited bookings', 'Advanced analytics & funnel', 'Team management (5 users)', 'SmartMoving integration', 'Priority support', 'Custom form questions', 'CSV export'],
+                name: 'Pro', price: 99, desc: 'For growing companies',
+                features: ['Unlimited widgets', 'Unlimited bookings', 'Advanced analytics & funnel', 'Team access (5 users)', 'Authorize.net payments', 'SmartMoving integration', 'Custom form questions', 'CSV export', 'Priority support'],
                 cta: 'Start Free Trial', popular: true,
               },
               {
-                name: 'Enterprise', price: null, desc: 'For multi-location operations',
-                features: ['Everything in Pro', 'Unlimited team members', 'API access', 'White-label option', 'Dedicated account manager', 'Custom integrations', 'SLA guarantee'],
+                name: 'Enterprise', price: null, desc: 'Multi-location operations',
+                features: ['Everything in Pro', 'Unlimited team members', 'API access', 'White-label (no BookedMove branding)', 'Dedicated account manager', 'Custom integrations', 'SLA guarantee'],
                 cta: 'Contact Sales', popular: false,
               },
             ].map((plan) => (
-              <div key={plan.name} className={`relative bg-white rounded-3xl p-8 ${plan.popular ? 'border-2 border-blue-600 shadow-2xl shadow-blue-600/10 scale-105' : 'border border-gray-200'}`}>
+              <div key={plan.name} className={`relative bg-white rounded-3xl p-8 transition-all duration-300 ${plan.popular ? 'border-2 border-blue-600 shadow-2xl shadow-blue-600/10 md:scale-[1.03]' : 'border border-gray-200 hover:border-gray-300 hover:shadow-lg'}`}>
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
                     MOST POPULAR
                   </div>
                 )}
@@ -163,23 +301,23 @@ export default function LandingPage() {
                 <div className="mb-6">
                   {plan.price ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-bold text-gray-900">${plan.price}</span>
-                      <span className="text-gray-500">/mo</span>
+                      <span className="text-5xl font-extrabold text-gray-900">${plan.price}</span>
+                      <span className="text-gray-400 font-medium">/mo</span>
                     </div>
                   ) : (
-                    <div className="text-3xl font-bold text-gray-900">Custom</div>
+                    <div className="text-4xl font-extrabold text-gray-900">Let&apos;s talk</div>
                   )}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0" />
+                    <li key={i} className="flex items-start gap-2.5 text-sm">
+                      <CheckCircle2 className="h-4.5 w-4.5 text-blue-600 shrink-0 mt-0.5" />
                       <span className="text-gray-600">{f}</span>
                     </li>
                   ))}
                 </ul>
-                <Link href={plan.price ? '/signup' : 'mailto:matt@movingletters.ai'}
-                  className={`block w-full py-3 rounded-xl font-semibold text-center transition-colors ${
+                <Link href={plan.price ? '/signup' : 'mailto:matt@bookedmove.com'}
+                  className={`block w-full py-3 rounded-xl font-semibold text-center transition-all ${
                     plan.popular
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -193,30 +331,30 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-gray-50" id="testimonials">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <p className="text-blue-600 font-semibold mb-3">TESTIMONIALS</p>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Loved by moving companies</h2>
+      <section className="py-20" id="testimonials">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <p className="text-blue-600 font-semibold text-sm tracking-wide uppercase mb-3">From Real Movers</p>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 tracking-tight">Don&apos;t take our word for it</h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             {[
-              { name: 'Mike Johnson', company: 'Summit Moving Co.', quote: 'We went from 10 online bookings a month to over 60. The widget pays for itself in the first week.' },
-              { name: 'Sarah Chen', company: 'Golden State Movers', quote: 'The onboarding was incredible. I had our widget live on our site in under 10 minutes. No developer needed.' },
-              { name: 'David Park', company: 'Metro Relocations', quote: 'The analytics show us exactly where customers drop off. We optimized our pricing and doubled our conversion rate.' },
+              { name: 'Mike Johnson', company: 'Summit Moving Co.', location: 'Denver, CO', quote: 'We went from 10 online bookings a month to over 60. The widget pays for itself before the free trial even ends.' },
+              { name: 'Sarah Chen', company: 'Golden State Movers', location: 'Sacramento, CA', quote: 'I had our widget live on our site in under 10 minutes. No developer, no plugins, no headaches. It just worked.' },
+              { name: 'David Park', company: 'Metro Relocations', location: 'Atlanta, GA', quote: 'The analytics showed us 40% of people were dropping off at the date picker. We fixed it and doubled our conversion rate overnight.' },
             ].map((t, i) => (
-              <div key={i} className="bg-white p-8 rounded-3xl border border-gray-100">
-                <div className="flex gap-1 mb-4">
-                  {[1,2,3,4,5].map(s => <Star key={s} className="h-5 w-5 text-yellow-500 fill-yellow-500" />)}
+              <div key={i} className="bg-white p-7 rounded-3xl border border-gray-100 hover:shadow-lg transition-all duration-300">
+                <div className="flex gap-0.5 mb-4">
+                  {[1,2,3,4,5].map(s => <Star key={s} className="h-4 w-4 text-amber-400 fill-amber-400" />)}
                 </div>
-                <p className="text-gray-600 mb-6 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                <p className="text-gray-600 mb-6 leading-relaxed text-[15px]">&ldquo;{t.quote}&rdquo;</p>
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-50">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
                     {t.name[0]}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{t.name}</p>
-                    <p className="text-sm text-gray-500">{t.company}</p>
+                    <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+                    <p className="text-xs text-gray-400">{t.company} · {t.location}</p>
                   </div>
                 </div>
               </div>
@@ -225,30 +363,36 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-12 md:p-16 text-center text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]" />
+      {/* Final CTA */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-[2rem] p-10 md:p-16 text-center text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(99,102,241,0.3),transparent_60%)]" />
             <div className="relative">
-              <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to book moves<br />while you sleep?</h2>
-              <p className="text-blue-100 mb-8 text-lg max-w-xl mx-auto">Join hundreds of moving companies using BookedMove to grow their business.</p>
-              <Link href="/signup" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-blue-600 rounded-2xl font-semibold text-lg hover:bg-blue-50 transition-colors shadow-xl">
-                Get Started Free <ArrowRight className="h-5 w-5" />
+              <h2 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight">Your competitors are booking<br />moves while you sleep.</h2>
+              <p className="text-blue-100 mb-8 text-lg max-w-xl mx-auto leading-relaxed">Join the moving companies that stopped playing phone tag and started booking online.</p>
+              <Link href="/signup" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold text-lg hover:bg-blue-50 transition-all shadow-xl hover:shadow-2xl">
+                Start Your Free Trial <ArrowRight className="h-5 w-5" />
               </Link>
+              <p className="text-blue-200 text-sm mt-5">Free 14-day trial · No credit card · Set up in 5 minutes</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-xs">B</div>
-            <span className="font-semibold text-gray-900">BookedMove</span>
+      <footer className="border-t border-gray-100 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">B</div>
+            <span className="font-bold text-gray-900">BookedMove</span>
           </div>
-          <p className="text-sm text-gray-500">© 2025 BookedMove. Built by <a href="https://movingletters.ai" className="text-blue-600 hover:underline">MovingLetters.ai</a></p>
+          <div className="flex items-center gap-6 text-sm text-gray-400">
+            <Link href="/login" className="hover:text-gray-600 transition-colors">Log In</Link>
+            <a href="mailto:matt@bookedmove.com" className="hover:text-gray-600 transition-colors">Contact</a>
+          </div>
+          <p className="text-sm text-gray-400">© 2026 BookedMove · A <a href="https://movingletters.ai" className="text-blue-500 hover:underline">MovingLetters.ai</a> product</p>
         </div>
       </footer>
     </div>
