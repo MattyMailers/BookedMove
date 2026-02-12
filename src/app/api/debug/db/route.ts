@@ -1,30 +1,20 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@libsql/client';
 
 export async function GET() {
   try {
     const url = process.env.TURSO_DATABASE_URL || '';
     const token = process.env.TURSO_AUTH_TOKEN || '';
     
-    // Skip libsql entirely, test raw fetch to Turso HTTP API
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        statements: ['SELECT 1 as test']
-      }),
-    });
-    const data = await resp.text();
+    const client = createClient({ url, authToken: token });
+    const result = await client.execute('SELECT 1 as test');
     
     return NextResponse.json({ 
-      inputUrl: url.substring(0, 50),
+      success: true,
       nodeVersion: process.version,
-      fetchStatus: resp.status,
-      fetchBody: data.substring(0, 200),
+      rows: result.rows,
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message, nodeVersion: process.version, url: (process.env.TURSO_DATABASE_URL||'').substring(0,50) }, { status: 500 });
   }
 }
