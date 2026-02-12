@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@libsql/client';
+import { createClient } from '@libsql/client/http';
 
 export async function GET() {
+  const dbUrl = process.env.TURSO_DATABASE_URL || '';
+  const token = process.env.TURSO_AUTH_TOKEN || '';
   try {
-    const url = process.env.TURSO_DATABASE_URL || '';
-    const token = process.env.TURSO_AUTH_TOKEN || '';
-    
-    const client = createClient({ url, authToken: token });
+    const client = createClient({ url: dbUrl, authToken: token });
     const result = await client.execute('SELECT 1 as test');
-    
-    return NextResponse.json({ 
-      success: true,
-      nodeVersion: process.version,
-      rows: result.rows,
-    });
+    return NextResponse.json({ success: true, rows: result.rows });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message, nodeVersion: process.version, url: (process.env.TURSO_DATABASE_URL||'').substring(0,50) }, { status: 500 });
+    return NextResponse.json({ error: e.message, dbUrl: dbUrl.substring(0,50) }, { status: 500 });
   }
 }
