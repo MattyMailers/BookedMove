@@ -5,7 +5,7 @@ let client: Client;
 function getClient(): Client {
   if (!client) {
     client = createClient({
-      url: (process.env.TURSO_DATABASE_URL || 'file:local.db').replace(/^libsql:\/\//, 'https://'),
+      url: process.env.TURSO_DATABASE_URL || 'file:local.db',
       authToken: process.env.TURSO_AUTH_TOKEN,
     });
   }
