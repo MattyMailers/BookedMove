@@ -2,25 +2,22 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const dbUrl = process.env.TURSO_DATABASE_URL || '';
-  const token = process.env.TURSO_AUTH_TOKEN || '';
+  
+  // Simulate what encodeBaseUrl does
+  const scheme = 'https';
+  const host = 'bookedmove-mattymailers.aws-us-east-1.turso.io';
+  const constructed = `${scheme}://${encodeURI(host)}`;
+  
   try {
-    // Manually use hrana-client HTTP transport
-    const resp = await fetch(`${dbUrl}/v2/pipeline`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        requests: [
-          { type: 'execute', stmt: { sql: 'SELECT 1 as test' } },
-          { type: 'close' }
-        ]
-      }),
-    });
-    const data = await resp.json();
-    return NextResponse.json({ success: true, data });
+    const u = new URL(constructed);
+    return NextResponse.json({ success: true, constructed, parsed: u.href });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    // Try the env var directly
+    try {
+      const u2 = new URL(dbUrl);
+      return NextResponse.json({ directWorks: true, constructed, constructedFails: e.message, direct: u2.href });
+    } catch (e2: any) {
+      return NextResponse.json({ constructedFails: e.message, directFails: e2.message, constructed, dbUrl: dbUrl.substring(0,50) });
+    }
   }
 }
