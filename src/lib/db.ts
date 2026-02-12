@@ -1,43 +1,121 @@
-import { createClient, type Client } from '@libsql/client';
+// Turso DB client - uses raw HTTP pipeline API to avoid @libsql/client URL parsing bugs on Vercel
+// Falls back to @libsql/client for local file:// SQLite in development
 
-let client: Client;
+const TURSO_URL = process.env.TURSO_DATABASE_URL || '';
+const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
+const IS_TURSO = TURSO_URL.startsWith('http');
 
-function getClient(): Client {
-  if (!client) {
-    client = createClient({
-      url: process.env.TURSO_DATABASE_URL || 'file:local.db',
-      authToken: process.env.TURSO_AUTH_TOKEN,
+// --- Turso HTTP Pipeline Client ---
+interface TursoResult {
+  rows: Record<string, any>[];
+  columns: string[];
+  lastInsertRowid: bigint | undefined;
+  rowsAffected: number;
+}
+
+function convertValue(v: any): any {
+  if (v === null) return null;
+  if (typeof v === 'object') {
+    if (v.type === 'null') return null;
+    if (v.type === 'integer') return Number(v.value);
+    if (v.type === 'float') return Number(v.value);
+    if (v.type === 'text') return v.value;
+    if (v.type === 'blob') return v.value;
+    return v.value ?? v;
+  }
+  return v;
+}
+
+function argToHrana(arg: any): any {
+  if (arg === null || arg === undefined) return { type: 'null' };
+  if (typeof arg === 'number') {
+    return Number.isInteger(arg) ? { type: 'integer', value: String(arg) } : { type: 'float', value: arg };
+  }
+  if (typeof arg === 'bigint') return { type: 'integer', value: String(arg) };
+  if (typeof arg === 'string') return { type: 'text', value: arg };
+  if (arg instanceof ArrayBuffer || arg instanceof Uint8Array) return { type: 'blob', base64: Buffer.from(arg as any).toString('base64') };
+  return { type: 'text', value: String(arg) };
+}
+
+async function tursoExecute(sql: string, args: any[] = []): Promise<TursoResult> {
+  const resp = await fetch(`${TURSO_URL}/v2/pipeline`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${TURSO_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      requests: [
+        {
+          type: 'execute',
+          stmt: {
+            sql,
+            args: args.map(argToHrana),
+          },
+        },
+        { type: 'close' },
+      ],
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Turso HTTP error ${resp.status}: ${text}`);
+  }
+
+  const data = await resp.json();
+  const result = data.results?.[0];
+
+  if (result?.type === 'error') {
+    throw new Error(`SQL error: ${result.error?.message || JSON.stringify(result.error)}`);
+  }
+
+  const execResult = result?.response?.result;
+  if (!execResult) {
+    return { rows: [], columns: [], lastInsertRowid: undefined, rowsAffected: 0 };
+  }
+
+  const columns = execResult.cols?.map((c: any) => c.name) || [];
+  const rows = (execResult.rows || []).map((row: any[]) => {
+    const obj: Record<string, any> = {};
+    row.forEach((val: any, i: number) => {
+      obj[columns[i]] = convertValue(val);
     });
-  }
-  return client;
+    return obj;
+  });
+
+  return {
+    rows,
+    columns,
+    lastInsertRowid: execResult.last_insert_rowid != null ? BigInt(execResult.last_insert_rowid) : undefined,
+    rowsAffected: execResult.affected_row_count || 0,
+  };
 }
 
-// Wrapper to provide better-sqlite3-like API over libsql
-class DbWrapper {
-  private client: Client;
-  constructor(client: Client) { this.client = client; }
-
-  prepare(sql: string) {
-    const c = this.client;
-    return {
-      get: (...args: any[]) => {
-        // Synchronous won't work - use async methods
-        throw new Error('Use async db methods');
-      },
-      all: (...args: any[]) => {
-        throw new Error('Use async db methods');
-      },
-      run: (...args: any[]) => {
-        throw new Error('Use async db methods');
-      },
-    };
+// --- Local SQLite fallback (dev only) ---
+let localClient: any = null;
+async function getLocalClient() {
+  if (!localClient) {
+    const { createClient } = await import('@libsql/client');
+    localClient = createClient({ url: 'file:local.db' });
   }
+  return localClient;
 }
 
-// Async query helpers
+async function localExecute(sql: string, args: any[] = []): Promise<TursoResult> {
+  const client = await getLocalClient();
+  const result = await client.execute({ sql, args });
+  return {
+    rows: result.rows as any[],
+    columns: result.columns,
+    lastInsertRowid: result.lastInsertRowid,
+    rowsAffected: result.rowsAffected,
+  };
+}
+
+// --- Public API ---
 export async function query(sql: string, args: any[] = []) {
-  const c = getClient();
-  return c.execute({ sql, args });
+  return IS_TURSO ? tursoExecute(sql, args) : localExecute(sql, args);
 }
 
 export async function queryOne(sql: string, args: any[] = []) {
@@ -56,7 +134,6 @@ export async function run(sql: string, args: any[] = []) {
 }
 
 export async function initDb() {
-  const c = getClient();
   const stmts = [
     "CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, logo_url TEXT, primary_color TEXT DEFAULT '#2563eb', accent_color TEXT DEFAULT '#1e40af', stripe_customer_id TEXT, subscription_status TEXT DEFAULT 'trial', subscription_plan TEXT DEFAULT 'starter', created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS company_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL UNIQUE, base_rate_per_hour REAL DEFAULT 150, min_hours REAL DEFAULT 2, deposit_type TEXT DEFAULT 'flat', deposit_amount REAL DEFAULT 100, crew_sizes TEXT DEFAULT '[]', truck_types TEXT DEFAULT '[]', service_areas TEXT DEFAULT '[]', smartmoving_api_key TEXT, smartmoving_client_id TEXT, stripe_connect_account_id TEXT, google_maps_key TEXT, mileage_rate REAL DEFAULT 2.5)",
@@ -69,11 +146,10 @@ export async function initDb() {
     "CREATE TABLE IF NOT EXISTS invitations (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL, email TEXT NOT NULL, role TEXT DEFAULT 'viewer', token TEXT NOT NULL UNIQUE, accepted INTEGER DEFAULT 0, invited_by INTEGER, created_at TEXT DEFAULT (datetime('now')))",
   ];
   for (const sql of stmts) {
-    await c.execute(sql);
+    await query(sql);
   }
-  // Add columns if missing (safe ALTER TABLE)
   const safeAlter = async (table: string, col: string, def: string) => {
-    try { await c.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
+    try { await query(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
   };
   await safeAlter('company_settings', 'form_config', "TEXT DEFAULT '{}'");
   await safeAlter('company_settings', 'onboarding_completed', 'INTEGER DEFAULT 0');
@@ -83,8 +159,6 @@ export async function initDb() {
   await safeAlter('bookings', 'square_footage', 'INTEGER');
   await safeAlter('bookings', 'fullness', 'TEXT');
   await safeAlter('company_users', 'role', "TEXT DEFAULT 'admin'");
-
-  // Phase 2: Payment gateway columns
   await safeAlter('company_settings', 'authorize_net_login_id', 'TEXT');
   await safeAlter('company_settings', 'authorize_net_transaction_key', 'TEXT');
   await safeAlter('company_settings', 'payment_enabled', 'INTEGER DEFAULT 0');
@@ -92,14 +166,10 @@ export async function initDb() {
   await safeAlter('company_settings', 'payment_timing', "TEXT DEFAULT 'at_booking'");
   await safeAlter('company_settings', 'email_notifications', 'TEXT');
   await safeAlter('company_settings', 'custom_css', 'TEXT');
-
-  // Phase 2: Payment tracking on bookings
   await safeAlter('bookings', 'payment_status', "TEXT DEFAULT 'none'");
   await safeAlter('bookings', 'payment_amount', 'REAL');
   await safeAlter('bookings', 'transaction_id', 'TEXT');
-
-  // Phase 2: Email log table
-  await c.execute(`CREATE TABLE IF NOT EXISTS email_log (
+  await query(`CREATE TABLE IF NOT EXISTS email_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id INTEGER,
     booking_id INTEGER,
